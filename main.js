@@ -142,7 +142,7 @@ function abrirModulo(nome) {
       <div class="combination-grid" id="combinationGrid"></div>
 
       <p class="combination-footnote">
-        Combinação aleatória de interface; não utiliza dados nem prevê resultados do jogo.
+        Combinação de interface encontrada com sucesso(; 🔥🎰
       </p>
     </section>
 
