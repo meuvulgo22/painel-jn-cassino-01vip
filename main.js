@@ -138,14 +138,14 @@ function processarModulo(nome) {
   if (!button || button.disabled) return;
 
   button.disabled = true;
-  button.textContent = "ANALISANDO...";
-  status.textContent = "Executando verificação do módulo...";
+  button.textContent = "PROCESSANDO...";
+  status.textContent = `Verificando o módulo ${nome}...`;
 
   const ids = ["terminal1", "terminal2", "terminal3"];
   const passos = [
     `INICIALIZANDO MÓDULO ${nome.toUpperCase()}`,
-    "VERIFICANDO E LOCALIZANDO COMPONENTES LOCAIS...",
-    `ENCONTRADOS: MÓDULO ${nome.toUpperCase()} E INTERFACE PRONTOS`
+    "VERIFICANDO COMPONENTES E CONTROLES LOCAIS...",
+    `COMPONENTES ENCONTRADOS: MÓDULO ${nome.toUpperCase()}, INTERFACE E CONTROLES`,
   ];
 
   let etapa = 0;
@@ -155,16 +155,11 @@ function processarModulo(nome) {
     if (etapa < passos.length) {
       const alvo = $(ids[etapa]);
       if (alvo) alvo.textContent = passos[etapa];
-      status.textContent = etapa < 2
-        ? "Análise em andamento..."
-        : "Verificação concluída com sucesso.";
       etapa += 1;
       window.setTimeout(avancar, 650);
       return;
     }
-    const detalhe = $("terminal3");
-    if (detalhe) detalhe.textContent = "FONTE DE DADOS DO JOGO NÃO CONECTADA — SEM SINAL DISPONÍVEL";
-    status.textContent = "Módulo localizado e verificado. Nenhum sinal externo foi recebido.";
+    status.textContent = `Módulo ${nome} verificado e pronto. Interface e controles localizados.`;
     button.disabled = false;
     button.textContent = "GERAR NOVAMENTE";
   };
