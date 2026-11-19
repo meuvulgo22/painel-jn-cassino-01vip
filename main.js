@@ -123,6 +123,17 @@ function abrirModulo(nome) {
       <div class="terminal-line" id="terminal2">AGUARDANDO COMANDO</div>
       <div class="terminal-line" id="terminal3">INTERFACE PRONTA</div>
     </div>
+    <section class="generated-combination" id="generatedCombination" hidden aria-live="polite">
+      <div class="combination-heading">
+        <div>
+          <span class="combination-kicker">PAINEL DE RESULTADOS</span>
+          <h4>Combinação gerada</h4>
+        </div>
+        <span class="combination-state">CONCLUÍDO</span>
+      </div>
+      <div class="combination-grid" id="combinationGrid"></div>
+      <p class="combination-footnote">Combinação aleatória de interface; não utiliza dados nem prevê resultados do jogo.</p>
+    </section>
     <div class="module-actions">
       <button class="run-button" id="btnProcessar" type="button">INICIAR PROCESSAMENTO</button>
       <p class="module-status" id="moduleStatus">Módulo selecionado. Aguardando ação.</p>
@@ -148,8 +159,40 @@ function processarModulo(nome) {
     `COMPONENTES ENCONTRADOS: MÓDULO ${nome.toUpperCase()}, INTERFACE E CONTROLES`,
   ];
 
+  const resultado = $("generatedCombination");
+  const grade = $("combinationGrid");
+  if (resultado) resultado.hidden = true;
+  if (grade) grade.replaceChildren();
+
   let etapa = 0;
   ids.forEach((id) => { if ($(id)) $(id).textContent = "AGUARDANDO..."; });
+
+  const gerarQuantidade = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+  const exibirCombinacao = () => {
+    if (!grade || !resultado) return;
+
+    // Valores aleatórios para compor a interface; não são calculados a partir do jogo.
+    const turbo = gerarQuantidade(2, 5);
+    const normal = gerarQuantidade(5, 12);
+    const segundoTurbo = gerarQuantidade(2, 4);
+
+    const itens = [
+      { valor: `${turbo}×`, rotulo: "TURBO", detalhe: "PARÂMETRO 01", classe: "turbo" },
+      { valor: `${normal} vezes`, rotulo: "NORMAL", detalhe: "PARÂMETRO 02", classe: "normal" },
+      { valor: `${segundoTurbo}×`, rotulo: "TURBO", detalhe: "PARÂMETRO 03", classe: "turbo" }
+    ];
+
+    grade.innerHTML = itens.map((item, indice) => `
+      <article class="combination-item ${item.classe}">
+        <span class="combination-index">0${indice + 1}</span>
+        <div class="combination-value">${item.valor}</div>
+        <div class="combination-label">${item.rotulo}</div>
+        <div class="combination-detail">${item.detalhe}</div>
+      </article>
+    `).join("");
+    resultado.hidden = false;
+  };
 
   const avancar = () => {
     if (etapa < passos.length) {
@@ -159,7 +202,8 @@ function processarModulo(nome) {
       window.setTimeout(avancar, 650);
       return;
     }
-    status.textContent = `Módulo ${nome} verificado e pronto. Interface e controles localizados.`;
+    exibirCombinacao();
+    status.textContent = `Módulo ${nome} verificado. Combinação de interface gerada.`;
     button.disabled = false;
     button.textContent = "GERAR NOVAMENTE";
   };
@@ -169,5 +213,32 @@ function processarModulo(nome) {
 document.querySelectorAll("[data-game]").forEach((button) => {
   button.addEventListener("click", () => abrirModulo(button.dataset.game));
 });
+
+
+/* Estilos isolados do cartão de combinação gerada */
+if (!document.getElementById("jnCombinationStyles")) {
+  const style = document.createElement("style");
+  style.id = "jnCombinationStyles";
+  style.textContent = `
+    .generated-combination{margin-top:18px;padding:17px;border:1px solid rgba(214,179,75,.24);border-radius:12px;background:linear-gradient(145deg,rgba(18,28,20,.98),rgba(7,12,9,.98));animation:jnReveal .35s ease both}
+    .generated-combination[hidden]{display:none!important}
+    .combination-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+    .combination-kicker{color:#8d9990;font-size:9px;letter-spacing:1.8px}
+    .combination-heading h4{margin-top:5px;color:#f0f2ed;font-size:16px;font-weight:700;letter-spacing:.3px}
+    .combination-state{padding:6px 9px;border:1px solid rgba(53,217,130,.3);border-radius:30px;color:#35d982;font-size:8px;font-weight:700;letter-spacing:1px;white-space:nowrap}
+    .combination-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+    .combination-item{position:relative;min-width:0;padding:14px 8px 12px;border:1px solid #29372c;border-radius:10px;background:linear-gradient(160deg,#121c15,#090e0a);text-align:center;overflow:hidden}
+    .combination-item.turbo{border-color:rgba(214,179,75,.32)}
+    .combination-index{display:block;color:#78867b;font-size:8px;letter-spacing:1.3px}
+    .combination-value{margin:10px 0 3px;color:#e5c65f;font-size:clamp(18px,4vw,25px);font-weight:800;line-height:1.15;white-space:nowrap}
+    .combination-item.normal .combination-value{color:#65d99a;font-size:clamp(15px,3.5vw,21px)}
+    .combination-label{color:#e7ece7;font-size:10px;font-weight:800;letter-spacing:1.3px}
+    .combination-detail{margin-top:7px;color:#7f8d82;font-size:7px;letter-spacing:1px}
+    .combination-footnote{margin-top:12px;color:#77847a;font-size:9px;line-height:1.5}
+    @keyframes jnReveal{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+    @media(max-width:360px){.combination-grid{gap:6px}.combination-item{padding:12px 5px}.combination-label{font-size:9px}}
+  `;
+  document.head.appendChild(style);
+}
 
 console.log("JN 01 VIP: interface carregada.");
