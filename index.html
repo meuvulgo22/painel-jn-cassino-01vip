@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ANAC/GB VIP</title>
+  <title>JN 01 VIP</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -33,10 +33,9 @@
   <!-- PAINEL -->
   <div id="painel" style="display:none;">
     <div class="topo">
-      <h1>ANAC/GB</h1>
+      <h1>JN 01 VIP</h1>
       <button onclick="gerar('Tigre')">GERAR TIGRE</button>
       <button onclick="gerar('Touro')">GERAR TOURO</button>
-      <button onclick="gerar('Aviator')">GERAR AVIATOR</button>
       <div id="timer"></div>
       <div id="contadorGlobal" style="margin-top:8px;color:#c9a227;font-weight:bold;"></div>
     </div>
@@ -65,102 +64,6 @@
       </div>
       <div id="resultadoAvaliacao"></div>
       <div id="tipoEnviado"></div>
-    </div>
-
-    <!-- ===== AVIATOR ESTILO ORÁCULO ===== -->
-    <div id="aviatorVisual" style="display:none;">
-      <div class="oraculo-container">
-        
-        <!-- Título -->
-        <h2 class="oraculo-titulo">🎯 ESCOLHA A VELA A RASTREAR ABAIXO</h2>
-        
-        <!-- Botões 3X 10X 30X -->
-        <div class="velas-botoes">
-          <button class="vela-btn" id="vela3X" onclick="selecionarVela('3X')">3X</button>
-          <button class="vela-btn" id="vela10X" onclick="selecionarVela('10X')">10X</button>
-          <button class="vela-btn" id="vela30X" onclick="selecionarVela('30X')">30X</button>
-        </div>
-        
-        <!-- Botão Ligar/Desligar (alterna) -->
-        <button id="btnRastreador" class="oraculo-btn-ligar" onclick="alternarRastreador()" disabled>
-          ▶️ LIGAR RASTREADOR
-        </button>
-        
-        <!-- Status -->
-        <div id="statusRastreador" class="oraculo-status">
-          🔴 RASTREADOR AGUARDANDO<br>
-          <span class="status-sub">Escolha a vela acima para ativar o rastreador.</span>
-        </div>
-
-        <!-- Últimos Acertos -->
-        <div class="oraculo-acertos">
-          <h3>📈 ÚLTIMOS ACERTOS</h3>
-          <div id="listaAcertos" class="lista-acertos">
-            <span class="acerto-item">30X 59%</span>
-            <span class="acerto-item">30X 61%</span>
-            <span class="acerto-item">10X 62%</span>
-          </div>
-          <div id="detalhesAcertos" class="detalhes-acertos">
-            <span>31.76x 13:36</span>
-            <span>1296.87x 00:30</span>
-            <span>16.24x 23:47</span>
-          </div>
-        </div>
-
-        <!-- Área de Resultado (escondida até ligar) -->
-        <div id="areaResultado" style="display:none;">
-          
-          <!-- Chances de sucesso -->
-          <div class="chances-sucesso">
-            <span>Chances de sucesso</span>
-            <div class="porcentagem-grande" id="porcentagemSucesso">63%</div>
-          </div>
-          
-          <!-- Entrada Sugerida -->
-          <div class="entrada-sugerida" id="entradaSugerida">
-            <div class="entrada-titulo" id="statusEntrada">🎯 ENTRADA SUGERIDA, ALTA CHANCE DE SUCESSO</div>
-            <div class="entrada-visao">VISÃO DA ENTRADA</div>
-            <div class="entrada-analise">
-              Análise completa da entrada<br>
-              Entre <strong id="rangeMin">1.17</strong>x e <strong id="rangeMax">2.38</strong>x, podendo chegar a <strong id="rangeTopo">2.73</strong>x no prazo de 60s.
-            </div>
-          </div>
-          
-          <!-- Botões IA PRONTA + DESLIGAR -->
-          <div class="ia-acoes">
-            <button class="btn-ia-pronta" id="btnIaPronta" disabled>🧠 IA PRONTA</button>
-            <button class="btn-desligar" onclick="desligarRastreador()">DESLIGAR</button>
-          </div>
-
-          <!-- Detalhes da Análise -->
-          <div class="detalhes-analise">
-            <div class="detalhe-item">
-              <span class="detalhe-label">PROBABILIDADE</span>
-              <span class="detalhe-valor" id="detalheProb">63%</span>
-            </div>
-            <div class="detalhe-item">
-              <span class="detalhe-label">RISCO</span>
-              <span class="detalhe-valor" id="detalheRisco">BAIXO</span>
-            </div>
-          </div>
-
-          <div class="resumo-ia">
-            <span class="resumo-label">RESUMO IA</span>
-            <p id="resumoTexto">Expectativa de velas entre 1.17x e 2.38x, com possibilidade de atingir 2.73x.</p>
-          </div>
-
-          <div class="analise-detalhada">
-            <span class="analise-label">ANÁLISE DETALHADA</span>
-            <p id="analiseTexto">A tendência atual é de baixa, com a maioria das velas abaixo do multiplicador alvo de 3x.</p>
-            <div class="tendencias">
-              <span class="tendencia" id="tendenciaTexto">📉 TENDÊNCIA: DESCENDO</span>
-              <span class="vies" id="viesTexto">VIÉS: BAIXA</span>
-            </div>
-          </div>
-
-        </div>
-
-      </div>
     </div>
 
     <div class="frame-area">

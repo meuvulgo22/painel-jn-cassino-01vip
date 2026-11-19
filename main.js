@@ -32,7 +32,6 @@ const resultadoAvaliacao = document.getElementById("resultadoAvaliacao");
 const tipoEnviado = document.getElementById("tipoEnviado");
 const contadorGlobal = document.getElementById("contadorGlobal");
 const oportunidade = document.getElementById("oportunidade");
-const aviatorVisual = document.getElementById("aviatorVisual");
 const loadingSinal = document.getElementById("loadingSinal");
 const historicoLista = document.getElementById("historicoLista");
 const barraProb = document.getElementById("barraProb");
@@ -47,9 +46,6 @@ let tempoRestante = 0;
 let intervalo;
 let avaliacaoFeita = false;
 let sinalAtual = null;
-let velaSelecionada = null;
-let rastreadorLigado = false;
-let intervaloRastreador = null;
 
 // ============================================================
 // LOGIN
@@ -200,14 +196,6 @@ window.gerar = function(jogo) {
   loadingSinal.style.display = "block";
   oportunidade.style.display = "none";
   
-  if (jogo === "Aviator") {
-    aviatorVisual.style.display = "block";
-    loadingSinal.style.display = "none";
-    resetarRastreador();
-    return;
-  }
-
-  aviatorVisual.style.display = "none";
 
   let contador = 3;
   loadingSinal.innerText = "⏳ Preparando sinal... " + contador;
@@ -283,216 +271,5 @@ function mostrarSinal(jogo, sinal) {
   iniciarTimer(2);
 }
 
-// ============================================================
-// RASTREADOR AVIATOR
-// ============================================================
-function resetarRastreador() {
-  velaSelecionada = null;
-  rastreadorLigado = false;
-  if (intervaloRastreador) {
-    clearInterval(intervaloRastreador);
-    intervaloRastreador = null;
-  }
-  
-  document.querySelectorAll('.vela-btn').forEach(btn => {
-    btn.classList.remove('ativo');
-  });
-  
-  const btn = document.getElementById('btnRastreador');
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = '▶️ LIGAR RASTREADOR';
-    btn.className = 'oraculo-btn-ligar';
-  }
-  
-  const status = document.getElementById('statusRastreador');
-  if (status) {
-    status.className = 'oraculo-status';
-    status.innerHTML = `
-      🔴 RASTREADOR AGUARDANDO<br>
-      <span class="status-sub">Escolha a vela acima para ativar o rastreador.</span>
-    `;
-  }
-  
-  document.getElementById('areaResultado').style.display = 'none';
-}
-
-window.selecionarVela = function(vela) {
-  velaSelecionada = vela;
-  
-  document.querySelectorAll('.vela-btn').forEach(btn => {
-    btn.classList.remove('ativo');
-  });
-  
-  document.querySelectorAll('.vela-btn').forEach(btn => {
-    if (btn.textContent === vela) {
-      btn.classList.add('ativo');
-    }
-  });
-  
-  const btn = document.getElementById('btnRastreador');
-  if (btn) {
-    btn.disabled = false;
-    btn.textContent = '▶️ LIGAR RASTREADOR';
-    btn.className = 'oraculo-btn-ligar';
-  }
-  
-  const status = document.getElementById('statusRastreador');
-  if (status) {
-    status.className = 'oraculo-status';
-    status.innerHTML = `
-      ✅ VELA SELECIONADA: ${vela}<br>
-      <span class="status-sub">Clique em LIGAR RASTREADOR para iniciar a análise.</span>
-    `;
-  }
-  
-  document.getElementById('areaResultado').style.display = 'none';
-};
-
-window.alternarRastreador = function() {
-  if (!velaSelecionada) {
-    alert('Selecione uma vela primeiro!');
-    return;
-  }
-  
-  if (rastreadorLigado) {
-    desligarRastreador();
-    return;
-  }
-  
-  ligarRastreador();
-};
-
-function ligarRastreador() {
-  rastreadorLigado = true;
-  
-  const btn = document.getElementById('btnRastreador');
-  btn.textContent = '⏳ ANALISANDO...';
-  btn.disabled = true;
-  
-  const status = document.getElementById('statusRastreador');
-  status.className = 'oraculo-status verde';
-  status.innerHTML = `
-    🟢 RASTREADOR ATIVO<br>
-    <span class="status-sub">Lendo mercado em tempo real...</span>
-  `;
-  
-  const areaResultado = document.getElementById('areaResultado');
-  areaResultado.style.display = 'block';
-  
-  const porcentagem = document.getElementById('porcentagemSucesso');
-  const rangeMin = document.getElementById('rangeMin');
-  const rangeMax = document.getElementById('rangeMax');
-  const rangeTopo = document.getElementById('rangeTopo');
-  
-  let progresso = 0;
-  intervaloRastreador = setInterval(() => {
-    progresso += Math.floor(Math.random() * 5) + 2;
-    
-    if (progresso >= 100) {
-      progresso = 100;
-      clearInterval(intervaloRastreador);
-      
-      // 🔥 CORRIGIDO: mínimo 1.00x
-      const prob = Math.floor(Math.random() * 25) + 55;
-      const min = (Math.random() * 0.8 + 1.0).toFixed(2);
-      const max = (Math.random() * 1.5 + 1.8).toFixed(2);
-      const topo = (Math.random() * 5 + 3).toFixed(2);
-      
-      const isBom = prob >= 60;
-      
-      porcentagem.textContent = prob + '%';
-      porcentagem.className = 'porcentagem-grande' + (isBom ? '' : ' vermelho');
-      
-      rangeMin.textContent = min;
-      rangeMax.textContent = max;
-      rangeTopo.textContent = topo;
-      
-      const statusEntrada = document.getElementById('statusEntrada');
-      const entradaSugerida = document.getElementById('entradaSugerida');
-      
-      if (isBom) {
-        statusEntrada.textContent = '🎯 ENTRADA SUGERIDA, ALTA CHANCE DE SUCESSO';
-        statusEntrada.className = 'entrada-titulo';
-        entradaSugerida.style.borderColor = '#2e7d32';
-      } else {
-        statusEntrada.textContent = '🚨 FUJA DESSA ENTRADA!';
-        statusEntrada.className = 'entrada-titulo vermelho';
-        entradaSugerida.style.borderColor = '#c62828';
-      }
-      
-      document.getElementById('detalheProb').textContent = prob + '%';
-      document.getElementById('detalheProb').className = 'detalhe-valor' + (isBom ? '' : ' vermelho');
-      
-      const risco = prob >= 70 ? 'BAIXO' : prob >= 55 ? 'MÉDIO' : 'ALTO';
-      document.getElementById('detalheRisco').textContent = risco;
-      document.getElementById('detalheRisco').className = 'detalhe-valor' + (risco === 'BAIXO' ? '' : ' vermelho');
-      
-      document.getElementById('resumoTexto').textContent = 
-        `Expectativa de velas entre ${min}x e ${max}x, com possibilidade de atingir ${topo}x.`;
-      
-      const tendencias = ['descendo', 'subindo', 'lateral'];
-      const tendencia = tendencias[Math.floor(Math.random() * 3)];
-      const vies = tendencia === 'descendo' ? 'BAIXA' : tendencia === 'subindo' ? 'ALTA' : 'NEUTRA';
-      
-      document.getElementById('analiseTexto').textContent = 
-        `A tendência atual é de ${tendencia}, com a maioria das velas ${tendencia === 'descendo' ? 'abaixo' : tendencia === 'subindo' ? 'acima' : 'próximas'} do multiplicador alvo.`;
-      
-      const tendenciaEl = document.getElementById('tendenciaTexto');
-      tendenciaEl.textContent = `📈 TENDÊNCIA: ${tendencia.toUpperCase()}`;
-      tendenciaEl.className = 'tendencia' + (tendencia === 'subindo' ? ' verde' : '');
-      
-      document.getElementById('viesTexto').textContent = `VIÉS: ${vies}`;
-      document.getElementById('viesTexto').className = 'vies' + (vies === 'ALTA' ? ' verde' : '');
-      
-      const btnIa = document.getElementById('btnIaPronta');
-      btnIa.className = 'btn-ia-pronta' + (isBom ? '' : ' vermelho');
-      btnIa.textContent = isBom ? '🧠 IA PRONTA' : '🚨 FUJA!';
-      
-      status.className = 'oraculo-status verde';
-      status.innerHTML = `
-        ✅ ANÁLISE CONCLUÍDA<br>
-        <span class="status-sub">${isBom ? 'Entrada sugerida disponível' : 'FUJA desta entrada!'}</span>
-      `;
-      
-      const btnRastreador = document.getElementById('btnRastreador');
-      btnRastreador.textContent = '🔴 DESLIGAR RASTREADOR';
-      btnRastreador.className = 'oraculo-btn-ligar desligado';
-      btnRastreador.disabled = false;
-      rastreadorLigado = true;
-      
-    } else {
-      porcentagem.textContent = progresso + '%';
-    }
-  }, 120);
-}
-
-window.desligarRastreador = function() {
-  if (intervaloRastreador) {
-    clearInterval(intervaloRastreador);
-    intervaloRastreador = null;
-  }
-  
-  rastreadorLigado = false;
-  
-  const btn = document.getElementById('btnRastreador');
-  btn.textContent = '▶️ LIGAR RASTREADOR';
-  btn.className = 'oraculo-btn-ligar';
-  btn.disabled = true;
-  
-  const status = document.getElementById('statusRastreador');
-  status.className = 'oraculo-status';
-  status.innerHTML = `
-    🔴 RASTREADOR AGUARDANDO<br>
-    <span class="status-sub">Escolha a vela acima para ativar o rastreador.</span>
-  `;
-  
-  document.getElementById('areaResultado').style.display = 'none';
-  
-  document.querySelectorAll('.vela-btn').forEach(btn => {
-    btn.classList.remove('ativo');
-  });
-  velaSelecionada = null;
-};
 
 console.log("✅ App iniciado com sucesso!");
