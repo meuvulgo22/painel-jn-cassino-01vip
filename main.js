@@ -1,27 +1,10 @@
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-
 import {
-  getFirestore,
-  doc,
-  updateDoc,
-  increment,
-  onSnapshot,
-  setDoc,
-  getDoc
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-import {
-  getAuth,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  onAuthStateChanged,
-  setPersistence,
-  browserLocalPersistence
+  getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+  onAuthStateChanged, setPersistence, browserLocalPersistence, signOut
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-/* FIREBASE - CONFIGURAÇÃO ORIGINAL */
-
+/* Configuração Firebase original do projeto */
 const firebaseConfig = {
   apiKey: "AIzaSyCuPyJWr0aDNQ7vUiQ2JxzqNpBxZXozoQg",
   authDomain: "painel-anac-gb.firebaseapp.com",
@@ -33,369 +16,158 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
 const auth = getAuth(app);
-
 setPersistence(auth, browserLocalPersistence).catch(console.error);
 
-/* ELEMENTOS */
+const $ = (id) => document.getElementById(id);
+const loginScreen = $("login");
+const cadastroScreen = $("cadastro");
+const painel = $("painel");
+const workspace = $("workspace");
 
-const loginDiv = document.getElementById("login");
-const cadastroDiv = document.getElementById("cadastro");
-const painelDiv = document.getElementById("painel");
+function showScreen(screen) {
+  loginScreen.hidden = screen !== "login";
+  cadastroScreen.hidden = screen !== "cadastro";
+  painel.hidden = screen !== "painel";
+}
 
-const btnGreen = document.getElementById("btnGreen");
-const btnRed = document.getElementById("btnRed");
+$("linkCadastro").addEventListener("click", (event) => {
+  event.preventDefault();
+  $("erroCadastro").textContent = "";
+  showScreen("cadastro");
+});
+$("linkLogin").addEventListener("click", (event) => {
+  event.preventDefault();
+  $("erroLogin").textContent = "";
+  showScreen("login");
+});
 
-const resultadoAvaliacao =
-  document.getElementById("resultadoAvaliacao");
-
-const tipoEnviado =
-  document.getElementById("tipoEnviado");
-
-const contadorGlobal =
-  document.getElementById("contadorGlobal");
-
-const oportunidade =
-  document.getElementById("oportunidade");
-
-const loadingSinal =
-  document.getElementById("loadingSinal");
-
-const textoCarregamento =
-  document.getElementById("textoCarregamento");
-
-const tituloOportunidade =
-  document.getElementById("tituloOportunidade");
-
-const descricaoOportunidade =
-  document.getElementById("descricaoOportunidade");
-
-const tipoOportunidade =
-  document.getElementById("tipoOportunidade");
-
-const faixaOportunidade =
-  document.getElementById("faixaOportunidade");
-
-const indiceOportunidade =
-  document.getElementById("indiceOportunidade");
-
-const barraProb =
-  document.getElementById("barraProb");
-
-const statusOportunidade =
-  document.getElementById("statusOportunidade");
-
-const refGlobal = doc(db, "historico", "global");
-
-/* ESTADO */
-
-let bloqueado = false;
-let tempoRestante = 0;
-let intervalo = null;
-let contagem = null;
-let avaliacaoFeita = false;
-let sinalAtual = null;
-
-/* LOGIN E CADASTRO */
-
-window.mostrarCadastro = function() {
-  loginDiv.style.display = "none";
-  cadastroDiv.style.display = "flex";
-};
-
-window.mostrarLogin = function() {
-  cadastroDiv.style.display = "none";
-  loginDiv.style.display = "flex";
-};
-
-window.cadastrar = async function() {
-  const email = document.getElementById("emailCadastro").value.trim();
-  const senha = document.getElementById("senhaCadastro").value;
-
-  if (!email || !senha) {
-    alert("Preencha todos os campos!");
-    return;
-  }
-
-  try {
-    await createUserWithEmailAndPassword(auth, email, senha);
-    alert("Cadastro realizado com sucesso!");
-    mostrarLogin();
-  } catch (erro) {
-    alert("Erro no cadastro: " + erro.message);
-  }
-};
-
-window.login = async function() {
-  const email = document.getElementById("emailLogin").value.trim();
-  const senha = document.getElementById("senhaLogin").value;
-
-  if (!email || !senha) {
-    alert("Preencha email e senha!");
-    return;
-  }
-
+$("formLogin").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  $("erroLogin").textContent = "";
+  const email = $("emailLogin").value.trim();
+  const senha = $("senhaLogin").value;
   try {
     await signInWithEmailAndPassword(auth, email, senha);
-  } catch (erro) {
-    alert("Erro no login: " + erro.message);
+  } catch (error) {
+    $("erroLogin").textContent = traduzirErro(error);
   }
+});
+
+$("formCadastro").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  $("erroCadastro").textContent = "";
+  const email = $("emailCadastro").value.trim();
+  const senha = $("senhaCadastro").value;
+  try {
+    await createUserWithEmailAndPassword(auth, email, senha);
+    showScreen("painel");
+  } catch (error) {
+    $("erroCadastro").textContent = traduzirErro(error);
+  }
+});
+
+$("btnSair").addEventListener("click", async () => {
+  try {
+    await signOut(auth);
+  } catch (error) {
+    alert("Não foi possível sair: " + traduzirErro(error));
+  }
+});
+
+onAuthStateChanged(auth, (user) => {
+  showScreen(user ? "painel" : "login");
+});
+
+function traduzirErro(error) {
+  const mensagens = {
+    "auth/invalid-email": "O e-mail informado não é válido.",
+    "auth/user-not-found": "Conta não encontrada.",
+    "auth/wrong-password": "Senha incorreta.",
+    "auth/invalid-credential": "E-mail ou senha incorretos.",
+    "auth/email-already-in-use": "Este e-mail já possui cadastro.",
+    "auth/weak-password": "A senha precisa ter pelo menos 6 caracteres.",
+    "auth/too-many-requests": "Muitas tentativas. Aguarde e tente novamente."
+  };
+  return mensagens[error.code] || "Não foi possível concluir. Verifique a conexão e tente novamente.";
+}
+
+/*
+ * Os módulos abaixo são apenas controles de interface.
+ * Não consultam o jogo, não acessam contas externas e não produzem previsões.
+ */
+const textosModulo = {
+  Tigre: [
+    "MÓDULO TIGRE CARREGADO",
+    "INTERFACE E COMPONENTES VERIFICADOS",
+    "FONTE DE DADOS EXTERNA NÃO CONFIGURADA"
+  ],
+  Touro: [
+    "MÓDULO TOURO CARREGADO",
+    "INTERFACE E COMPONENTES VERIFICADOS",
+    "FONTE DE DADOS EXTERNA NÃO CONFIGURADA"
+  ]
 };
 
-/* CONTROLE DE LOGIN */
+function abrirModulo(nome) {
+  const linhas = textosModulo[nome];
+  if (!linhas) return;
 
-onAuthStateChanged(auth, function(user) {
-  if (user) {
-    painelDiv.style.display = "block";
-    loginDiv.style.display = "none";
-    cadastroDiv.style.display = "none";
-  } else {
-    painelDiv.style.display = "none";
-    loginDiv.style.display = "flex";
-    cadastroDiv.style.display = "none";
-  }
-});
+  workspace.innerHTML = `
+    <div class="module-head">
+      <h3>${nome.toUpperCase()}</h3>
+      <span class="module-badge">MÓDULO DISPONÍVEL</span>
+    </div>
+    <div class="terminal-window" aria-live="polite">
+      <div class="terminal-line current" id="terminal1">INICIALIZANDO ${nome.toUpperCase()}...</div>
+      <div class="terminal-line" id="terminal2">AGUARDANDO COMANDO</div>
+      <div class="terminal-line" id="terminal3">INTERFACE PRONTA</div>
+    </div>
+    <div class="module-actions">
+      <button class="run-button" id="btnProcessar" type="button">INICIAR PROCESSAMENTO</button>
+      <p class="module-status" id="moduleStatus">Módulo selecionado. Aguardando ação.</p>
+    </div>
+  `;
 
-/* FIREBASE GLOBAL */
-
-async function garantirDocumento() {
-  try {
-    const snap = await getDoc(refGlobal);
-
-    if (!snap.exists()) {
-      await setDoc(refGlobal, {
-        green: 0,
-        red: 0
-      });
-    }
-  } catch (erro) {
-    console.error("Erro ao preparar dados:", erro);
-  }
+  $("btnProcessar").addEventListener("click", () => processarModulo(nome));
 }
 
-garantirDocumento();
+function processarModulo(nome) {
+  const button = $("btnProcessar");
+  const status = $("moduleStatus");
+  if (!button || button.disabled) return;
 
-onSnapshot(refGlobal, function(docSnap) {
-  if (!docSnap.exists()) return;
+  button.disabled = true;
+  button.textContent = "PROCESSANDO...";
+  status.textContent = "Verificando componentes da interface...";
 
-  const dados = docSnap.data();
-  const green = dados.green || 0;
-  const red = dados.red || 0;
-
-  if (contadorGlobal) {
-    contadorGlobal.innerText =
-      "Avaliações: " + green + " Green | " + red + " Red";
-  }
-});
-
-/* AVALIAÇÃO */
-
-async function marcar(tipo) {
-  if (avaliacaoFeita || !sinalAtual) return;
-
-  avaliacaoFeita = true;
-
-  if (resultadoAvaliacao) {
-    resultadoAvaliacao.innerText = "Avaliação enviada!";
-  }
-
-  if (tipoEnviado) {
-    tipoEnviado.innerText =
-      "Avaliação registrada como " + tipo;
-  }
-
-  if (btnGreen) btnGreen.disabled = true;
-  if (btnRed) btnRed.disabled = true;
-
-  try {
-    if (tipo === "GREEN") {
-      await updateDoc(refGlobal, {
-        green: increment(1)
-      });
-    } else {
-      await updateDoc(refGlobal, {
-        red: increment(1)
-      });
-    }
-  } catch (erro) {
-    console.error("Erro ao registrar avaliação:", erro);
-    if (resultadoAvaliacao) {
-      resultadoAvaliacao.innerText =
-        "Não foi possível registrar. Tente novamente.";
-    }
-  }
-}
-
-if (btnGreen) {
-  btnGreen.addEventListener("click", function() {
-    marcar("GREEN");
-  });
-}
-
-if (btnRed) {
-  btnRed.addEventListener("click", function() {
-    marcar("RED");
-  });
-}
-
-/* TIMER */
-
-function iniciarTimer(minutos) {
-  bloqueado = true;
-  tempoRestante = minutos * 60;
-
-  clearInterval(intervalo);
-
-  const timerEl = document.getElementById("timer");
-
-  function atualizarTimer() {
-    const minutosRestantes =
-      Math.floor(tempoRestante / 60);
-
-    const segundosRestantes =
-      tempoRestante % 60;
-
-    if (timerEl) {
-      timerEl.innerText =
-        "Nova simulação em: " +
-        minutosRestantes + ":" +
-        String(segundosRestantes).padStart(2, "0");
-    }
-
-    if (tempoRestante <= 0) {
-      clearInterval(intervalo);
-      bloqueado = false;
-
-      if (timerEl) timerEl.innerText = "";
-    }
-  }
-
-  atualizarTimer();
-
-  intervalo = setInterval(function() {
-    tempoRestante--;
-    atualizarTimer();
-
-    if (tempoRestante <= 0) {
-      clearInterval(intervalo);
-    }
-  }, 1000);
-}
-
-/* GERADOR DE SIMULAÇÃO */
-
-function gerarSinalAleatorio(jogo) {
-  const tipos = [
-    "CENÁRIO DEMONSTRATIVO A",
-    "CENÁRIO DEMONSTRATIVO B",
-    "CENÁRIO DEMONSTRATIVO C"
+  const ids = ["terminal1", "terminal2", "terminal3"];
+  const passos = [
+    `INICIALIZANDO MÓDULO ${nome.toUpperCase()}`,
+    "VERIFICANDO COMPONENTES LOCAIS",
+    "SEM FONTE DE DADOS DO JOGO CONECTADA"
   ];
 
-  const tipo =
-    tipos[Math.floor(Math.random() * tipos.length)];
+  let etapa = 0;
+  ids.forEach((id) => { if ($(id)) $(id).textContent = "AGUARDANDO..."; });
 
-  const indice =
-    Math.floor(Math.random() * 31) + 60;
-
-  const faixaMin = (Math.random() * 0.8 + 1).toFixed(2);
-  const faixaMax = (Math.random() * 1.5 + 1.8).toFixed(2);
-
-  return {
-    jogo: jogo,
-    tipo: tipo,
-    min: faixaMin,
-    max: faixaMax,
-    indice: indice
-  };
-}
-
-/* MOSTRAR RESULTADO */
-
-function mostrarSinal(jogo, sinal) {
-  sinalAtual = sinal;
-  avaliacaoFeita = false;
-
-  if (btnGreen) btnGreen.disabled = false;
-  if (btnRed) btnRed.disabled = false;
-
-  if (resultadoAvaliacao) {
-    resultadoAvaliacao.innerText = "";
-  }
-
-  if (tipoEnviado) {
-    tipoEnviado.innerText = "";
-  }
-
-  oportunidade.style.display = "block";
-  oportunidade.style.opacity = "0";
-
-  tituloOportunidade.innerText =
-    "OPORTUNIDADE " + jogo.toUpperCase();
-
-  descricaoOportunidade.innerText =
-    "Cenário Criado!";
-
-  tipoOportunidade.innerText = sinal.tipo;
-
-  faixaOportunidade.innerText =
-    sinal.min + "x até " + sinal.max + "x";
-
-  indiceOportunidade.innerText =
-    sinal.indice + "%";
-
-  barraProb.style.width = "0%";
-
-  statusOportunidade.innerText =
-    "JN FINALIZOU COM SUCESSO";
-
-  setTimeout(function() {
-    oportunidade.style.opacity = "1";
-    barraProb.style.width = sinal.indice + "%";
-  }, 100);
-
-  iniciarTimer(2);
-}
-
-/* BOTÃO GERAR */
-
-window.gerar = function(jogo) {
-  if (jogo !== "Tigre" && jogo !== "Touro") {
-    alert("Jogo não reconhecido.");
-    return;
-  }
-
-  if (bloqueado) {
-    alert("Aguarde o temporizador terminar.");
-    return;
-  }
-
-  clearInterval(contagem);
-
-  oportunidade.style.display = "none";
-  loadingSinal.style.display = "block";
-
-  let contador = 3;
-
-  textoCarregamento.innerText =
-    "Preparando JN 01 VIP procurando oportunidades... " + contador;
-
-  contagem = setInterval(function() {
-    contador--;
-
-    textoCarregamento.innerText =
-      "Preparando demonstração... " + contador;
-
-    if (contador <= 0) {
-      clearInterval(contagem);
-
-      loadingSinal.style.display = "none";
-
-      const sinal = gerarSinalAleatorio(jogo);
-
-      mostrarSinal(jogo, sinal);
+  const avancar = () => {
+    if (etapa < passos.length) {
+      const alvo = $(ids[etapa]);
+      if (alvo) alvo.textContent = passos[etapa];
+      etapa += 1;
+      window.setTimeout(avancar, 550);
+      return;
     }
-  }, 1000);
-};
+    status.textContent = "Interface pronta. Para obter dados reais, configure uma fonte autorizada.";
+    button.disabled = false;
+    button.textContent = "PROCESSAR NOVAMENTE";
+  };
+  avancar();
+}
 
-console.log("JN 01 VIP iniciado 🔥👑");
+document.querySelectorAll("[data-game]").forEach((button) => {
+  button.addEventListener("click", () => abrirModulo(button.dataset.game));
+});
+
+console.log("JN 01 VIP: interface carregada.");

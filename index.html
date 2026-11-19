@@ -1,120 +1,104 @@
-
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#080b09">
   <title>JN 01 VIP</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-  <div id="login">
-    <div class="login-box">
-      <h2>JN 01 VIP</h2>
-      <p class="subtitulo">Acesse sua conta</p>
-      <input type="email" id="emailLogin" placeholder="Email">
-      <input type="password" id="senhaLogin" placeholder="Senha">
-      <button onclick="login()">ENTRAR</button>
-      <p>Não tem conta? <a href="#" onclick="mostrarCadastro()">Cadastre-se</a></p>
-    </div>
-  </div>
-
-  <div id="cadastro" style="display:none;">
-    <div class="cadastro-box">
-      <h2>CRIAR CONTA</h2>
-      <input type="email" id="emailCadastro" placeholder="Email">
-      <input type="password" id="senhaCadastro" placeholder="Senha">
-      <button onclick="cadastrar()">CADASTRAR</button>
-      <p>Já tem conta? <a href="#" onclick="mostrarLogin()">Fazer login</a></p>
-    </div>
-  </div>
-
-  <main id="painel" style="display:none;">
-
-    <header class="topo">
+  <section id="login" class="auth-screen">
+    <form class="auth-box" id="formLogin">
+      <div class="brand-mark">JN</div>
       <h1>JN 01 VIP</h1>
-      <p class="subtitulo">CENTRAL DE SIMULAÇÃO</p>
+      <p class="muted">ACESSO À PLATAFORMA</p>
+      <label for="emailLogin">E-mail</label>
+      <input type="email" id="emailLogin" autocomplete="username" placeholder="Seu e-mail" required>
+      <label for="senhaLogin">Senha</label>
+      <input type="password" id="senhaLogin" autocomplete="current-password" placeholder="Sua senha" required>
+      <button class="primary-button" type="submit">ENTRAR</button>
+      <p class="auth-switch">Ainda não tem conta? <a href="#" id="linkCadastro">Criar conta</a></p>
+      <p class="auth-error" id="erroLogin" role="alert"></p>
+    </form>
+  </section>
 
-      <div class="botoes-jogos">
-        <button class="botao-jogo tigre" onclick="gerar('Tigre')">
-          🐯 GERAR TIGRE
-        </button>
-        <button class="botao-jogo touro" onclick="gerar('Touro')">
-          🐂 GERAR TOURO
-        </button>
+  <section id="cadastro" class="auth-screen" hidden>
+    <form class="auth-box" id="formCadastro">
+      <div class="brand-mark">JN</div>
+      <h1>Criar conta</h1>
+      <p class="muted">CADASTRO DE ACESSO</p>
+      <label for="emailCadastro">E-mail</label>
+      <input type="email" id="emailCadastro" autocomplete="username" placeholder="Seu e-mail" required>
+      <label for="senhaCadastro">Senha</label>
+      <input type="password" id="senhaCadastro" autocomplete="new-password" minlength="6" placeholder="Mínimo de 6 caracteres" required>
+      <button class="primary-button" type="submit">CADASTRAR</button>
+      <p class="auth-switch">Já tem conta? <a href="#" id="linkLogin">Voltar ao login</a></p>
+      <p class="auth-error" id="erroCadastro" role="alert"></p>
+    </form>
+  </section>
+
+  <main id="painel" hidden>
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">CENTRAL DE CONTROLE</div>
+        <h1>JN 01 <span>VIP</span></h1>
       </div>
-
-      <div id="timer"></div>
-      <div id="contadorGlobal"></div>
+      <button id="btnSair" class="logout-button" type="button">SAIR</button>
     </header>
 
-    <section id="loadingSinal" style="display:none;">
-      <div class="loader"></div>
-      <p id="textoCarregamento">Preparando simulação...</p>
-    </section>
-
-    <section id="oportunidade" class="painel-oportunidade" style="display:none;">
-      <div class="status-topo">
-        <span class="led"></span>
-        SIMULAÇÃO CONCLUÍDA
-      </div>
-
-      <h2 id="tituloOportunidade">OPORTUNIDADE TIGRE</h2>
-      <p id="descricaoOportunidade"></p>
-
-      <div class="resultado-destaque">
-        <span>INDICAÇÃO DEMONSTRATIVA</span>
-        <strong id="tipoOportunidade">--</strong>
-      </div>
-
-      <div class="dados-oportunidade">
+    <section class="control-panel">
+      <div class="section-heading">
         <div>
-          <span>FAIXA SIMULADA</span>
-          <strong id="faixaOportunidade">--</strong>
+          <div class="eyebrow">MÓDULOS</div>
+          <h2>Selecione uma área</h2>
         </div>
+        <span class="system-state"><i></i> SISTEMA ONLINE</span>
+      </div>
+
+      <div class="game-buttons">
+        <button class="game-button tiger" type="button" data-game="Tigre">
+          <span class="game-icon">🐯</span>
+          <span><strong>TIGRE</strong><small>ABRIR MÓDULO</small></span>
+          <span class="button-arrow">›</span>
+        </button>
+        <button class="game-button bull" type="button" data-game="Touro">
+          <span class="game-icon">🐂</span>
+          <span><strong>TOURO</strong><small>ABRIR MÓDULO</small></span>
+          <span class="button-arrow">›</span>
+        </button>
+      </div>
+
+      <div id="workspace" class="workspace" aria-live="polite">
+        <div class="workspace-placeholder">
+          <div class="scan-icon">⌁</div>
+          <h3>ÁREA DE OPERAÇÃO</h3>
+          <p>Selecione Tigre ou Touro para abrir o respectivo módulo.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="platform-section">
+      <div class="section-heading platform-heading">
         <div>
-          <span>ÍNDICE FICTÍCIO</span>
-          <strong id="indiceOportunidade">--%</strong>
+          <div class="eyebrow">AMBIENTE EXTERNO</div>
+          <h2>Plataforma</h2>
         </div>
+        <span class="platform-tag">VISUALIZAÇÃO</span>
       </div>
-
-      <div class="barra-fundo">
-        <div id="barraProb"></div>
-      </div>
-
-      <div id="statusOportunidade">
-        MODO DE DEMONSTRAÇÃO ATIVO
-      </div>
-
-      <p class="aviso-simulacao">
-        Resultado aleatório para demonstração.
-        Não representa previsão, sinal real ou garantia de ganho.
-      </p>
-    </section>
-
-    <section id="avaliacao">
-      <h3>AVALIAÇÃO DA DEMONSTRAÇÃO</h3>
-      <div class="avaliacao-botoes">
-        <button id="btnGreen" class="av-btn green">DEU GREEN</button>
-        <button id="btnRed" class="av-btn red">DEU RED</button>
-      </div>
-      <div id="resultadoAvaliacao"></div>
-      <div id="tipoEnviado"></div>
-    </section>
-
-    <section class="plataforma">
-      <div class="titulo-plataforma">PLATAFORMA</div>
       <div class="frame-area">
         <iframe
           src="https://daie5081qp3ou.cloudfront.net/?id=559813638"
-          title="Plataforma"
-          allowfullscreen>
+          title="Plataforma externa"
+          loading="lazy"
+          allowfullscreen
+          referrerpolicy="strict-origin-when-cross-origin">
         </iframe>
       </div>
+      <p class="frame-note">Se o conteúdo não carregar, verifique se a plataforma externa permite incorporação em iframe.</p>
     </section>
 
+    <footer class="page-footer">JN 01 VIP <span>•</span> PAINEL DE INTERFACE</footer>
   </main>
 
   <script type="module" src="main.js"></script>
