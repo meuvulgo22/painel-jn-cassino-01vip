@@ -109,10 +109,18 @@ const textosModulo = {
     "MÓDULO TOURO CARREGADO",
     "INTERFACE E COMPONENTES VERIFICADOS",
     "FONTE DE DADOS EXTERNA NÃO CONFIGURADA"
+  ],
+  Midas: [
+    "MÓDULO MIDAS CARREGADO",
+    "INTERFACE E COMPONENTES VERIFICADOS",
+    "FONTE DE DADOS EXTERNA NÃO CONFIGURADA"
   ]
 };
 
+let processamentoAtual = 0;
+
 function abrirModulo(nome) {
+  processamentoAtual += 1;
   const linhas = textosModulo[nome];
   if (!linhas) return;
 
@@ -139,7 +147,7 @@ function abrirModulo(nome) {
         <span class="combination-state">CONCLUÍDO</span>
       </div>
 
-      <div class="combination-grid" id="combinationGrid"></div>
+      <div class="combination-grid ${nome === "Midas" ? "midas-grid" : ""}" id="combinationGrid"></div>
 
       <p class="combination-footnote">
         Combinação de interface encontrada com sucesso(; 🔥🎰
@@ -165,6 +173,7 @@ function processarModulo(nome) {
 
   if (!button || button.disabled) return;
 
+  const meuProcessamento = ++processamentoAtual;
   button.disabled = true;
   button.textContent = "PROCESSANDO...";
   status.textContent = `Verificando o módulo ${nome}...`;
@@ -198,7 +207,6 @@ function processarModulo(nome) {
 
     const turbo = gerarQuantidade(2, 5);
     const normal = gerarQuantidade(5, 12);
-    const segundoTurbo = gerarQuantidade(2, 4);
 
     const itens = [
       {
@@ -212,14 +220,20 @@ function processarModulo(nome) {
         rotulo: "NORMAL",
         detalhe: "PARÂMETRO 02",
         classe: "normal"
-      },
-      {
+      }
+    ];
+
+    // Tigre e Touro mantêm a terceira combinação TURBO.
+    // Midas exibe somente as duas primeiras combinações.
+    if (nome !== "Midas") {
+      const segundoTurbo = gerarQuantidade(2, 4);
+      itens.push({
         valor: `${segundoTurbo}×`,
         rotulo: "TURBO",
         detalhe: "PARÂMETRO 03",
         classe: "turbo"
-      }
-    ];
+      });
+    }
 
     grade.innerHTML = itens.map((item, indice) => `
       <article class="combination-item ${item.classe}">
@@ -234,6 +248,8 @@ function processarModulo(nome) {
   };
 
   const avancar = () => {
+    if (meuProcessamento !== processamentoAtual || !button.isConnected) return;
+
     if (etapa < passos.length) {
       const alvo = $(ids[etapa]);
 
@@ -249,8 +265,12 @@ function processarModulo(nome) {
     status.textContent =
       `Módulo ${nome} verificado. Combinação de interface gerada.`;
 
-    button.disabled = false;
-    button.textContent = "GERAR NOVAMENTE";
+    button.textContent = "AGUARDE...";
+    window.setTimeout(() => {
+      if (meuProcessamento !== processamentoAtual || !button.isConnected) return;
+      button.disabled = false;
+      button.textContent = "GERAR NOVAMENTE";
+    }, 1500);
   };
 
   avancar();
@@ -316,6 +336,12 @@ if (!document.getElementById("jnCombinationStyles")) {
       display:grid;
       grid-template-columns:repeat(3,minmax(0,1fr));
       gap:9px
+    }
+
+    .combination-grid.midas-grid{
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      max-width:460px;
+      margin-inline:auto
     }
 
     .combination-item{
