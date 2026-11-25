@@ -39,7 +39,7 @@ export default async function handler(req, res) {
     await authenticate(req);
   } catch (error) {
     return res.status(401).json({
-      error: error.message
+      error: "Autenticação inválida. Faça login novamente."
     });
   }
 
@@ -61,40 +61,73 @@ export default async function handler(req, res) {
     }
 
     const historico = Array.isArray(feedback)
-      ? feedback.slice(0, 20).map(item => ({
-          resultado: item.outcome
-        }))
+      ? feedback
+          .filter(item =>
+            item &&
+            ["Deu certo", "Não deu certo"].includes(item.outcome)
+          )
+          .slice(0, 20)
+          .map(item => item.outcome)
       : [];
 
+    const quantidadeAcertos = historico.filter(
+      item => item === "Deu certo"
+    ).length;
+
+    const quantidadeFalhas = historico.filter(
+      item => item === "Não deu certo"
+    ).length;
+
     const formato = jogo === "Aviator"
-      ? "Use exclusivamente o formato de multiplicadores do Aviator. Nunca misture números ou estruturas dos jogos PG."
-      : `Use exclusivamente o formato próprio do jogo PG ${jogo}. Não utilize o formato de multiplicadores do Aviator.`;
+      ? `
+FORMATO AVIATOR:
+- Trate exclusivamente de multiplicadores (exemplo: 1.50x).
+- Nunca use números, turbo ou normal dos jogos PG.
+- Não invente um multiplicador futuro.
+`
+      : `
+FORMATO PG:
+- Analise exclusivamente o módulo ${jogo}.
+- Não utilize multiplicadores com x.
+- Não misture informações do Aviator.
+- Não invente números ou resultados futuros.
+`;
 
     const prompt = `
-Você é a inteligência artificial do JN 01 VIP.
+Você é a IA de análise do painel JN 01 VIP.
 
 JOGO: ${jogo}
 
-REGRA DE FORMATO:
 ${formato}
 
-Sua tarefa é produzir uma análise textual responsável.
+HISTÓRICO DE FEEDBACK:
+Total de avaliações: ${historico.length}
+Avaliações positivas: ${quantidadeAcertos}
+Avaliações negativas: ${quantidadeFalhas}
 
-Não utilize números aleatórios como se fossem resultados.
-Não invente histórico real.
-Não afirme conhecer o próximo resultado.
-Não prometa ganhos ou acertos garantidos.
+REGRAS:
+1. Responda em português brasileiro.
+2. Seja extremamente objetiva.
+3. Não escreva introduções longas.
+4. Não explique as regras do jogo.
+5. Não invente resultados, padrões ou dados.
+6. Não diga que consegue prever rodadas aleatórias.
+7. Considere o feedback anterior apenas como contexto.
+8. Não prometa ganhos ou acertos.
 
-Considere os feedbacks anteriores deste jogo:
-${JSON.stringify(historico)}
+FORMATO OBRIGATÓRIO DA RESPOSTA:
 
-Use os feedbacks para contextualizar suas próximas análises,
-mas não trate acertos anteriores como prova de previsibilidade.
+ANÁLISE:
+Uma explicação curta, com no máximo duas frases.
 
-Explique suas limitações e apresente uma sugestão recreativa,
-sem garantir que ela funcionará.
+HISTÓRICO:
+Uma frase curta sobre os feedbacks disponíveis.
 
-Responda em português brasileiro.
+ORIENTAÇÃO:
+Uma orientação recreativa e responsável, sem apresentar
+resultados inventados como previsões.
+
+Tamanho máximo: 100 palavras.
 `;
 
     const response = await fetch(
@@ -115,11 +148,11 @@ Responda em português brasileiro.
             },
             {
               role: "user",
-              content: `Faça uma análise para ${jogo}.`
+              content: `Gere a análise objetiva do módulo ${jogo}.`
             }
           ],
-          temperature: 0.5,
-          max_tokens: 400
+          temperature: 0.2,
+          max_tokens: 180
         })
       }
     );
@@ -127,13 +160,14 @@ Responda em português brasileiro.
     const data = await response.json();
 
     if (!response.ok) {
-      console.error(data);
+      console.error("Erro OpenRouter:", data);
+
       return res.status(502).json({
-        error: "Erro ao consultar a OpenRouter."
+        error: "Erro ao consultar a inteligência artificial."
       });
     }
 
-    const analise = data.choices?.[0]?.message?.content;
+    const analise = data.choices?.[0]?.message?.content?.trim();
 
     if (!analise) {
       return res.status(502).json({
@@ -148,7 +182,7 @@ Responda em português brasileiro.
     });
 
   } catch (error) {
-    console.error(error);
+    console.error("Erro interno:", error);
 
     return res.status(500).json({
       error: "Erro interno da inteligência artificial."
