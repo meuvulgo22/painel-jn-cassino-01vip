@@ -1,24 +1,10 @@
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-
 import {
-  getAuth,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  onAuthStateChanged,
-  setPersistence,
-  browserLocalPersistence,
-  signOut
+  getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+  onAuthStateChanged, setPersistence, browserLocalPersistence, signOut
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-
 import {
-  getFirestore,
-  collection,
-  addDoc,
-  getDocs,
-  query,
-  where,
-  limit
+  getFirestore, collection, addDoc, getDocs, query, where, limit, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -34,19 +20,16 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-
 setPersistence(auth, browserLocalPersistence).catch(console.error);
 
-const $ = id => document.getElementById(id);
-
+const $ = (id) => document.getElementById(id);
 const loginScreen = $("login");
 const cadastroScreen = $("cadastro");
 const painel = $("painel");
 const workspace = $("workspace");
-
-let usuarioAtual = null;
 let processamentoAtual = 0;
-let analiseAtual = null;
+let resultadoAtual = null;
+let jogoAtual = null;
 
 function showScreen(screen) {
   loginScreen.hidden = screen !== "login";
@@ -54,45 +37,33 @@ function showScreen(screen) {
   painel.hidden = screen !== "painel";
 }
 
-/* LOGIN */
-
-$("linkCadastro").addEventListener("click", event => {
+$("linkCadastro").addEventListener("click", (event) => {
   event.preventDefault();
   $("erroCadastro").textContent = "";
   showScreen("cadastro");
 });
 
-$("linkLogin").addEventListener("click", event => {
+$("linkLogin").addEventListener("click", (event) => {
   event.preventDefault();
   $("erroLogin").textContent = "";
   showScreen("login");
 });
 
-$("formLogin").addEventListener("submit", async event => {
+$("formLogin").addEventListener("submit", async (event) => {
   event.preventDefault();
   $("erroLogin").textContent = "";
-
   try {
-    await signInWithEmailAndPassword(
-      auth,
-      $("emailLogin").value.trim(),
-      $("senhaLogin").value
-    );
+    await signInWithEmailAndPassword(auth, $("emailLogin").value.trim(), $("senhaLogin").value);
   } catch (error) {
     $("erroLogin").textContent = traduzirErro(error);
   }
 });
 
-$("formCadastro").addEventListener("submit", async event => {
+$("formCadastro").addEventListener("submit", async (event) => {
   event.preventDefault();
   $("erroCadastro").textContent = "";
-
   try {
-    await createUserWithEmailAndPassword(
-      auth,
-      $("emailCadastro").value.trim(),
-      $("senhaCadastro").value
-    );
+    await createUserWithEmailAndPassword(auth, $("emailCadastro").value.trim(), $("senhaCadastro").value);
     showScreen("painel");
   } catch (error) {
     $("erroCadastro").textContent = traduzirErro(error);
@@ -100,19 +71,11 @@ $("formCadastro").addEventListener("submit", async event => {
 });
 
 $("btnSair").addEventListener("click", async () => {
-  try {
-    await signOut(auth);
-  } catch (error) {
-    alert("Não foi possível sair: " + traduzirErro(error));
-  }
+  try { await signOut(auth); }
+  catch (error) { alert("Não foi possível sair: " + traduzirErro(error)); }
 });
 
-onAuthStateChanged(auth, user => {
-  usuarioAtual = user;
-  processamentoAtual++;
-  analiseAtual = null;
-  showScreen(user ? "painel" : "login");
-});
+onAuthStateChanged(auth, (user) => showScreen(user ? "painel" : "login"));
 
 function traduzirErro(error) {
   const mensagens = {
@@ -124,500 +87,227 @@ function traduzirErro(error) {
     "auth/weak-password": "A senha precisa ter pelo menos 6 caracteres.",
     "auth/too-many-requests": "Muitas tentativas. Aguarde e tente novamente."
   };
-
-  return mensagens[error.code] ||
-    "Não foi possível concluir. Verifique a conexão.";
+  return mensagens[error.code] || "Não foi possível concluir. Verifique a conexão e tente novamente.";
 }
 
-/* MÓDULOS */
-
-const jogos = ["Tigre", "Touro", "Midas", "Aviator"];
-
-function abrirModulo(nome) {
-  if (!jogos.includes(nome)) return;
-
-  processamentoAtual++;
-  analiseAtual = null;
-
-  const aviator = nome === "Aviator";
-
-  workspace.innerHTML = `
-    <div class="module-head">
-      <h3>${nome.toUpperCase()}</h3>
-      <span class="module-badge">IA CONECTADA</span>
-    </div>
-
-    <div class="terminal-window" aria-live="polite">
-      <div class="terminal-line current" id="terminal1">
-        MÓDULO ${nome.toUpperCase()} INICIALIZADO
-      </div>
-      <div class="terminal-line" id="terminal2">
-        AGUARDANDO SOLICITAÇÃO
-      </div>
-      <div class="terminal-line" id="terminal3">
-        SISTEMA PRONTO
-      </div>
-    </div>
-
-    <section class="generated-combination" id="generatedCombination" hidden>
-      <div class="combination-heading">
-        <div>
-          <span class="combination-kicker">
-            ${aviator ? "ALVO RECREATIVO" : "INTELIGÊNCIA ARTIFICIAL"}
-          </span>
-          <h4>${aviator ? "Multiplicador gerado" : `Análise do ${nome}`}</h4>
-        </div>
-        <span class="combination-state">GERADO</span>
-      </div>
-
-      <div id="aiAnalysis" class="ai-analysis"></div>
-
-      <div id="aviatorTarget" class="aviator-target" hidden>
-        <span>MULTIPLICADOR SUGERIDO</span>
-        <strong id="aviatorMultiplier">--.--x</strong>
-        <small>Alvo recreativo, não é previsão de resultado.</small>
-      </div>
-
-      <p class="combination-footnote" id="combinationFootnote"></p>
-
-      <div class="feedback-area" id="feedbackArea" hidden>
-        <p>Como foi o resultado dessa análise?</p>
-
-        <div class="feedback-buttons">
-          <button type="button" class="feedback-success" id="feedbackSuccess">
-            ✓ DEU CERTO
-          </button>
-          <button type="button" class="feedback-failure" id="feedbackFailure">
-            ✕ NÃO DEU CERTO
-          </button>
-        </div>
-
-        <p class="feedback-status" id="feedbackStatus"></p>
-      </div>
-    </section>
-
-    <div class="module-actions">
-      <button class="run-button" id="btnProcessar" type="button">
-        SOLICITAR ANÁLISE DA IA
-      </button>
-      <p class="module-status" id="moduleStatus">
-        Módulo selecionado. Aguardando solicitação.
-      </p>
-    </div>
-  `;
-
-  $("btnProcessar").addEventListener("click", () => {
-    processarModulo(nome);
-  });
-
-  $("feedbackSuccess").addEventListener("click", () => {
-    registrarFeedback(nome, "Deu certo");
-  });
-
-  $("feedbackFailure").addEventListener("click", () => {
-    registrarFeedback(nome, "Não deu certo");
-  });
+function escaparHTML(valor) {
+  return String(valor).replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[char]));
 }
 
-/* HISTÓRICO DO JOGO SELECIONADO */
-
-async function carregarFeedback(nome) {
-  if (!usuarioAtual) {
-    throw new Error("Faça login novamente.");
+async function carregarFeedback(jogo) {
+  const user = auth.currentUser;
+  if (!user) return [];
+  try {
+    const ref = collection(db, "users", user.uid, "gameFeedback");
+    const consulta = query(ref, where("game", "==", jogo), limit(20));
+    const snapshot = await getDocs(consulta);
+    return snapshot.docs.map((doc) => doc.data()).reverse();
+  } catch (error) {
+    console.error("Não foi possível carregar o histórico de feedback:", error);
+    return [];
   }
-
-  const referencia = collection(
-    db,
-    "users",
-    usuarioAtual.uid,
-    "gameFeedback"
-  );
-
-  const consulta = query(
-    referencia,
-    where("game", "==", nome),
-    limit(50)
-  );
-
-  const resultado = await getDocs(consulta);
-
-  return resultado.docs
-    .map(documento => documento.data())
-    .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
-    .slice(0, 20)
-    .map(item => ({
-      outcome: item.outcome,
-      multiplier: item.multiplier || null
-    }));
 }
 
-/* CONSULTA À IA */
-
-async function consultarIA(nome, feedback) {
-  if (!usuarioAtual) {
-    throw new Error("Sua sessão expirou. Entre novamente.");
-  }
-
-  const token = await usuarioAtual.getIdToken();
-
-  const resposta = await fetch("/api/ai", {
+async function consultarIA(jogo, feedback) {
+  const user = auth.currentUser;
+  if (!user) throw new Error("Faça login novamente para continuar.");
+  const token = await user.getIdToken();
+  const response = await fetch("/api/ai", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}`
+      Authorization: `Bearer ${token}`
     },
-    body: JSON.stringify({
-      jogo: nome,
-      feedback
-    })
+    body: JSON.stringify({ jogo, feedback })
   });
-
-  let dados;
-
-  try {
-    dados = await resposta.json();
-  } catch {
-    throw new Error("Resposta inválida do servidor.");
-  }
-
-  if (!resposta.ok) {
-    throw new Error(
-      dados.error || "Não foi possível consultar a IA."
-    );
-  }
-
-  if (nome === "Aviator") {
-    const valor = Number(
-      String(dados.multiplicador || "").replace(/x/gi, "").replace(",", ".")
-    );
-
-    if (!Number.isFinite(valor) || valor < 1.70 || valor > 10) {
-      throw new Error("A IA retornou um multiplicador inválido.");
-    }
-
-    return {
-      multiplicador: `${valor.toFixed(2)}x`,
-      analise: dados.analise || "Alvo recreativo gerado."
-    };
-  }
-
-  if (!dados.analise) {
-    throw new Error("A IA não retornou uma análise.");
-  }
-
-  return {
-    analise: dados.analise
-  };
+  const dados = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(dados.error || "Não foi possível consultar a IA.");
+  return dados;
 }
 
-/* PROCESSAR MÓDULO */
+function abrirModulo(nome) {
+  processamentoAtual++;
+  jogoAtual = nome;
+  resultadoAtual = null;
+  workspace.innerHTML = `
+    <div class="module-head">
+      <h3>${escaparHTML(nome.toUpperCase())}</h3>
+      <span class="module-badge">MÓDULO DISPONÍVEL</span>
+    </div>
+    <div class="terminal-window" aria-live="polite">
+      <div class="terminal-line current" id="terminal1">INICIALIZANDO ${escaparHTML(nome.toUpperCase())}...</div>
+      <div class="terminal-line" id="terminal2">AGUARDANDO COMANDO</div>
+      <div class="terminal-line" id="terminal3">INTERFACE PRONTA</div>
+    </div>
+    <section class="generated-combination" id="generatedCombination" hidden aria-live="polite">
+      <div class="combination-heading">
+        <div><span class="combination-kicker">PAINEL DE RESULTADOS</span><h4>Combinação gerada</h4></div>
+        <span class="combination-state">CONCLUÍDO</span>
+      </div>
+      <div class="combination-grid ${nome === "Midas" ? "midas-grid" : ""}" id="combinationGrid"></div>
+      <p class="combination-footnote">Sugestão gerada pela IA.</p>
+    </section>
+    <section class="aviator-result" id="aviatorResult" hidden aria-live="polite">
+      <span class="combination-kicker">ALVO GERADO</span>
+      <div class="aviator-multiplier" id="aviatorMultiplier"></div>
+      <p class="aviator-attempt-note"><strong>Limite de tentativas</strong><br>Você pode fazer até 3 tentativas com este alvo. Se não atingir, encerre e aguarde uma nova análise.</p>
+    </section>
+    <div class="feedback-area" id="feedbackArea" hidden>
+      <p>Como foi esse resultado?</p>
+      <div class="feedback-buttons">
+        <button type="button" class="feedback-button success" data-feedback="Deu certo">DEU CERTO</button>
+        <button type="button" class="feedback-button failure" data-feedback="Não deu certo">NÃO DEU CERTO</button>
+      </div>
+      <p class="feedback-status" id="feedbackStatus" aria-live="polite"></p>
+    </div>
+    <div class="module-actions">
+      <button class="run-button" id="btnProcessar" type="button">GERAR COM IA</button>
+      <p class="module-status" id="moduleStatus">Módulo selecionado. Aguardando ação.</p>
+    </div>
+  `;
+  $("btnProcessar").addEventListener("click", () => processarModulo(nome));
+  workspace.querySelectorAll("[data-feedback]").forEach((button) => {
+    button.addEventListener("click", () => registrarFeedback(button.dataset.feedback));
+  });
+}
+
+function renderizarPG(jogo, dados) {
+  const esperado = jogo === "Midas" ? 2 : 3;
+  if (!Array.isArray(dados.itens) || dados.itens.length !== esperado) {
+    throw new Error("A IA retornou uma combinação em formato inválido. Tente novamente.");
+  }
+  const itens = dados.itens;
+  const tiposEsperados = jogo === "Midas" ? ["TURBO", "NORMAL"] : ["TURBO", "NORMAL", "TURBO"];
+  itens.forEach((item, i) => {
+    if (item.tipo !== tiposEsperados[i] || !Number.isInteger(item.valor)) {
+      throw new Error("A IA retornou valores inválidos. Tente gerar novamente.");
+    }
+    const min = item.tipo === "TURBO" ? 2 : 5;
+    const max = item.tipo === "TURBO" ? 5 : 12;
+    if (item.valor < min || item.valor > max) throw new Error("Valor fora do formato permitido. Tente novamente.");
+  });
+  $("combinationGrid").innerHTML = itens.map((item, index) => `
+    <article class="combination-item ${item.tipo.toLowerCase()}">
+      <span class="combination-index">0${index + 1}</span>
+      <div class="combination-value">${item.tipo === "NORMAL" ? `${item.valor} vezes` : `${item.valor}×`}</div>
+      <div class="combination-label">${item.tipo}</div>
+      <div class="combination-detail">PARÂMETRO 0${index + 1}</div>
+    </article>
+  `).join("");
+  $("generatedCombination").hidden = false;
+  resultadoAtual = itens.map((item) => `${item.tipo}: ${item.valor}`).join(" | ");
+}
 
 async function processarModulo(nome) {
   const button = $("btnProcessar");
   const status = $("moduleStatus");
-
   if (!button || button.disabled) return;
-
   const meuProcessamento = ++processamentoAtual;
-
   button.disabled = true;
-  button.textContent = "CONSULTANDO IA...";
-
+  button.textContent = "PROCESSANDO...";
+  status.textContent = `Consultando a IA para ${nome}...`;
+  ["terminal1", "terminal2", "terminal3"].forEach((id) => { if ($(id)) $(id).textContent = "PROCESSANDO..."; });
   $("generatedCombination").hidden = true;
+  $("aviatorResult").hidden = true;
   $("feedbackArea").hidden = true;
-  $("aiAnalysis").textContent = "";
-  $("aviatorTarget").hidden = true;
-
-  status.textContent = "Preparando análise...";
-
-  const passos = [
-    `INICIALIZANDO ${nome.toUpperCase()}...`,
-    "CONSULTANDO HISTÓRICO DE FEEDBACK...",
-    "SOLICITANDO RESPOSTA À INTELIGÊNCIA ARTIFICIAL..."
-  ];
-
-  const ids = ["terminal1", "terminal2", "terminal3"];
+  resultadoAtual = null;
 
   try {
-    for (let i = 0; i < passos.length; i++) {
-      if (meuProcessamento !== processamentoAtual) return;
-
-      $(ids[i]).textContent = passos[i];
-      status.textContent = passos[i];
-
-      await new Promise(resolve => window.setTimeout(resolve, 350));
-    }
-
     const feedback = await carregarFeedback(nome);
-
+    const dados = await consultarIA(nome, feedback);
     if (meuProcessamento !== processamentoAtual) return;
-
-    const resultado = await consultarIA(nome, feedback);
-
-    if (meuProcessamento !== processamentoAtual) return;
-
-    analiseAtual = {
-      jogo: nome,
-      multiplicador: resultado.multiplicador || null,
-      analise: resultado.analise
-    };
 
     if (nome === "Aviator") {
-      $("aviatorMultiplier").textContent = resultado.multiplicador;
-      $("aviatorTarget").hidden = false;
-      $("aiAnalysis").textContent = resultado.analise;
-      $("combinationFootnote").textContent =
-        "Formato exclusivo Aviator: multiplicador entre 1.70x e 10.00x.";
+      const numero = Number(String(dados.multiplicador || "").replace("x", "").replace(",", "."));
+      if (!Number.isFinite(numero) || numero < 1.7 || numero > 10) throw new Error("A IA retornou um multiplicador inválido. Tente novamente.");
+      const formatado = `${numero.toFixed(2)}x`;
+      $("aviatorMultiplier").textContent = formatado;
+      $("aviatorResult").hidden = false;
+      resultadoAtual = formatado;
     } else {
-      $("aiAnalysis").textContent = resultado.analise;
-      $("combinationFootnote").textContent =
-        `Análise textual do módulo ${nome}. Não representa previsão de resultado.`;
+      renderizarPG(nome, dados);
     }
 
-    $("generatedCombination").hidden = false;
+    ["terminal1", "terminal2", "terminal3"].forEach((id, index) => {
+      const linhas = ["SOLICITAÇÃO ENVIADA À IA", "RESPOSTA RECEBIDA", "RESULTADO EXIBIDO"];
+      if ($(id)) $(id).textContent = linhas[index];
+    });
     $("feedbackArea").hidden = false;
-    $("terminal3").textContent = "RESPOSTA RECEBIDA DO SERVIDOR";
-
-    status.textContent =
-      `Análise de ${nome} recebida. Você pode avaliar o resultado.`;
-
-    button.textContent = "GERAR NOVA ANÁLISE";
-
+    status.textContent = "Geração concluída.";
+    button.textContent = "GERAR NOVAMENTE";
   } catch (error) {
     if (meuProcessamento !== processamentoAtual) return;
-
-    console.error("Erro na análise:", error);
-
-    status.textContent = error.message ||
-      "Não foi possível concluir a análise.";
-
-    $("terminal3").textContent = "ERRO NA CONSULTA DA IA";
+    status.textContent = error.message || "Ocorreu um erro ao gerar.";
+    $("terminal3").textContent = "NÃO FOI POSSÍVEL CONCLUIR";
     button.textContent = "TENTAR NOVAMENTE";
-
   } finally {
-    if (meuProcessamento === processamentoAtual && button.isConnected) {
-      button.disabled = false;
-    }
+    if (meuProcessamento === processamentoAtual && button.isConnected) button.disabled = false;
   }
 }
 
-/* SALVAR FEEDBACK */
-
-async function registrarFeedback(nome, resultado) {
-  const sucesso = $("feedbackSuccess");
-  const falha = $("feedbackFailure");
+async function registrarFeedback(outcome) {
+  const user = auth.currentUser;
   const status = $("feedbackStatus");
-
-  if (!usuarioAtual || !analiseAtual || analiseAtual.jogo !== nome) {
-    status.textContent = "Solicite uma análise antes de avaliar.";
-    return;
-  }
-
-  sucesso.disabled = true;
-  falha.disabled = true;
+  if (!user || !jogoAtual || !resultadoAtual || !status) return;
+  const buttons = workspace.querySelectorAll("[data-feedback]");
+  buttons.forEach((button) => { button.disabled = true; });
   status.textContent = "Salvando feedback...";
-
   try {
-    const referencia = collection(
-      db,
-      "users",
-      usuarioAtual.uid,
-      "gameFeedback"
-    );
-
-    const registro = {
-      game: nome,
-      outcome: resultado,
-      createdAt: Date.now()
-    };
-
-    if (nome === "Aviator") {
-      registro.multiplier = analiseAtual.multiplicador;
-    }
-
-    await addDoc(referencia, registro);
-
-    status.textContent =
-      `Feedback salvo: ${resultado}. ${nome === "Aviator" ? "Multiplicador: " + analiseAtual.multiplicador : ""}`;
-
+    await addDoc(collection(db, "users", user.uid, "gameFeedback"), {
+      game: jogoAtual,
+      outcome,
+      suggestion: resultadoAtual,
+      createdAt: serverTimestamp()
+    });
+    status.textContent = "Feedback salvo. Ele será considerado nas próximas análises deste jogo.";
   } catch (error) {
-    console.error("Erro ao salvar feedback:", error);
-
-    status.textContent =
-      "Erro ao salvar. Verifique as regras do Firestore.";
-
-    sucesso.disabled = false;
-    falha.disabled = false;
+    console.error(error);
+    status.textContent = "Não foi possível salvar. Verifique as regras do Firestore.";
+    buttons.forEach((button) => { button.disabled = false; });
   }
 }
 
-/* CLIQUES DOS MÓDULOS */
-
-document.querySelectorAll("[data-game]").forEach(button => {
-  button.addEventListener("click", () => {
-    abrirModulo(button.dataset.game);
-  });
+document.querySelectorAll("[data-game]").forEach((button) => {
+  button.addEventListener("click", () => abrirModulo(button.dataset.game));
 });
-
-/* ESTILOS */
 
 if (!document.getElementById("jnCombinationStyles")) {
   const style = document.createElement("style");
   style.id = "jnCombinationStyles";
-
   style.textContent = `
-    .generated-combination {
-      margin-top:18px;
-      padding:17px;
-      border:1px solid rgba(214,179,75,.24);
-      border-radius:12px;
-      background:linear-gradient(145deg,rgba(18,28,20,.98),rgba(7,12,9,.98));
-      animation:jnReveal .35s ease both;
-    }
-
-    .generated-combination[hidden],
-    .aviator-target[hidden] {
-      display:none!important;
-    }
-
-    .combination-heading {
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      margin-bottom:14px;
-    }
-
-    .combination-kicker {
-      color:#8d9990;
-      font-size:9px;
-      letter-spacing:1.8px;
-    }
-
-    .combination-heading h4 {
-      margin-top:5px;
-      color:#f0f2ed;
-      font-size:16px;
-      font-weight:700;
-    }
-
-    .combination-state {
-      padding:6px 9px;
-      border:1px solid rgba(53,217,130,.3);
-      border-radius:30px;
-      color:#35d982;
-      font-size:8px;
-      font-weight:700;
-    }
-
-    .ai-analysis {
-      padding:14px;
-      border:1px solid rgba(214,179,75,.2);
-      border-radius:9px;
-      background:rgba(0,0,0,.2);
-      color:#e5eae5;
-      font-size:13px;
-      line-height:1.7;
-      white-space:pre-wrap;
-      overflow-wrap:anywhere;
-    }
-
-    .aviator-target {
-      margin-top:12px;
-      padding:20px 12px;
-      border:1px solid rgba(214,179,75,.35);
-      border-radius:12px;
-      background:linear-gradient(145deg,#17251a,#090e0a);
-      text-align:center;
-    }
-
-    .aviator-target span,
-    .aviator-target small {
-      display:block;
-      color:#aab5aa;
-      font-size:10px;
-      letter-spacing:1px;
-    }
-
-    .aviator-target strong {
-      display:block;
-      margin:12px 0;
-      color:#e5c65f;
-      font-size:clamp(42px,12vw,62px);
-      font-weight:900;
-      line-height:1;
-    }
-
-    .combination-footnote {
-      margin-top:12px;
-      color:#9aa49b;
-      font-size:10px;
-      line-height:1.6;
-    }
-
-    .feedback-area {
-      margin-top:17px;
-      padding-top:14px;
-      border-top:1px solid rgba(214,179,75,.17);
-    }
-
-    .feedback-area > p:first-child {
-      margin-bottom:10px;
-      color:#e5eae5;
-      font-size:12px;
-      font-weight:700;
-    }
-
-    .feedback-buttons {
-      display:grid;
-      grid-template-columns:1fr 1fr;
-      gap:9px;
-    }
-
-    .feedback-buttons button {
-      min-height:42px;
-      padding:9px 7px;
-      border-radius:8px;
-      font-size:10px;
-      font-weight:800;
-      cursor:pointer;
-    }
-
-    .feedback-success {
-      border:1px solid rgba(53,217,130,.4);
-      background:rgba(53,217,130,.1);
-      color:#55e49a;
-    }
-
-    .feedback-failure {
-      border:1px solid rgba(255,100,100,.35);
-      background:rgba(255,100,100,.08);
-      color:#ff9292;
-    }
-
-    .feedback-buttons button:disabled {
-      opacity:.45;
-      cursor:not-allowed;
-    }
-
-    .feedback-status {
-      margin-top:10px;
-      color:#aab5aa;
-      font-size:10px;
-      line-height:1.5;
-    }
-
-    @keyframes jnReveal {
-      from { opacity:0; transform:translateY(7px); }
-      to { opacity:1; transform:translateY(0); }
-    }
-
-    @media(max-width:360px) {
-      .feedback-buttons { grid-template-columns:1fr; }
-    }
+    .generated-combination,.aviator-result{margin-top:18px;padding:17px;border:1px solid rgba(214,179,75,.24);border-radius:12px;background:linear-gradient(145deg,rgba(18,28,20,.98),rgba(7,12,9,.98));animation:jnReveal .35s ease both}
+    .generated-combination[hidden],.aviator-result[hidden],.feedback-area[hidden]{display:none!important}
+    .combination-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+    .combination-kicker{color:#8d9990;font-size:9px;letter-spacing:1.8px}
+    .combination-heading h4{margin-top:5px;color:#f0f2ed;font-size:16px}
+    .combination-state{padding:6px 9px;border:1px solid rgba(53,217,130,.3);border-radius:30px;color:#35d982;font-size:8px;font-weight:700;letter-spacing:1px}
+    .combination-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+    .combination-grid.midas-grid{grid-template-columns:repeat(2,minmax(0,1fr));max-width:460px;margin-inline:auto}
+    .combination-item{position:relative;min-width:0;padding:14px 8px 12px;border:1px solid #29372c;border-radius:10px;background:linear-gradient(160deg,#121c15,#090e0a);text-align:center;overflow:hidden}
+    .combination-item.turbo{border-color:rgba(214,179,75,.32)}
+    .combination-index{display:block;color:#78867b;font-size:8px;letter-spacing:1.3px}
+    .combination-value{margin:10px 0 3px;color:#e5c65f;font-size:clamp(18px,4vw,25px);font-weight:800;white-space:nowrap}
+    .combination-item.normal .combination-value{color:#65d99a;font-size:clamp(15px,3.5vw,21px)}
+    .combination-label{color:#e7ece7;font-size:10px;font-weight:800;letter-spacing:1.3px}
+    .combination-detail{margin-top:7px;color:#7f8d82;font-size:7px;letter-spacing:1px}
+    .combination-footnote{margin-top:12px;color:#77847a;font-size:9px;line-height:1.5}
+    .aviator-multiplier{margin:12px 0;color:#e5c65f;font-size:clamp(42px,10vw,64px);font-weight:900;text-align:center}
+    .aviator-attempt-note{margin-top:10px;color:#b8c4b9;font-size:12px;line-height:1.6;text-align:center}
+    .aviator-attempt-note strong{color:#e5c65f}
+    .feedback-area{margin-top:17px;padding:14px;border:1px solid #29372c;border-radius:10px;background:#0a100b}
+    .feedback-area>p:first-child{color:#dce4dd;font-size:12px;margin-bottom:10px}
+    .feedback-buttons{display:flex;gap:9px;flex-wrap:wrap}
+    .feedback-button{padding:10px 13px;border-radius:8px;font-size:10px;font-weight:800;letter-spacing:.5px;border:1px solid #405044;background:#111a13;color:#e8eee9}
+    .feedback-button.success{border-color:#28764b;color:#67dc99}
+    .feedback-button.failure{border-color:#74413e;color:#f08e83}
+    .feedback-button:disabled{opacity:.5}
+    .feedback-status{margin-top:9px;color:#91a096;font-size:10px;line-height:1.5}
+    @keyframes jnReveal{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+    @media(max-width:360px){.combination-grid{gap:6px}.combination-item{padding:12px 5px}.combination-label{font-size:9px}}
   `;
-
   document.head.appendChild(style);
 }
 
-console.log("JN 01 VIP: módulos e IA carregados.");
+console.log("JN 01 VIP: interface carregada.");
