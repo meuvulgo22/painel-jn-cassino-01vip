@@ -4,9 +4,7 @@ import { createRemoteJWKSet, jwtVerify } from "jose";
 const PROJECT_ID = "painel-anac-gb";
 
 const GOOGLE_KEYS = createRemoteJWKSet(
-  new URL(
-    "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com"
-  )
+  new URL("https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com")
 );
 
 const GAMES = ["Tigre", "Touro", "Midas", "Aviator"];
@@ -18,26 +16,26 @@ async function authenticate(req) {
     throw new Error("Faça login para utilizar a IA.");
   }
 
-  const token = authorization.slice(7);
-
-  const { payload } = await jwtVerify(token, GOOGLE_KEYS, {
-    issuer: `https://securetoken.google.com/${PROJECT_ID}`,
-    audience: PROJECT_ID
-  });
+  const { payload } = await jwtVerify(
+    authorization.slice(7),
+    GOOGLE_KEYS,
+    {
+      issuer: `https://securetoken.google.com/${PROJECT_ID}`,
+      audience: PROJECT_ID
+    }
+  );
 
   return payload.sub;
 }
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
-    return res.status(405).json({
-      error: "Utilize POST."
-    });
+    return res.status(405).json({ error: "Utilize POST." });
   }
 
   try {
     await authenticate(req);
-  } catch (error) {
+  } catch {
     return res.status(401).json({
       error: "Autenticação inválida. Faça login novamente."
     });
@@ -55,80 +53,72 @@ export default async function handler(req, res) {
     const { jogo, feedback } = req.body || {};
 
     if (!GAMES.includes(jogo)) {
-      return res.status(400).json({
-        error: "Jogo inválido."
-      });
+      return res.status(400).json({ error: "Jogo inválido." });
     }
 
     const historico = Array.isArray(feedback)
-      ? feedback
-          .filter(item =>
-            item &&
-            ["Deu certo", "Não deu certo"].includes(item.outcome)
-          )
-          .slice(0, 20)
-          .map(item => item.outcome)
+      ? feedback.slice(0, 20).map(item => ({
+          resultado: item.outcome,
+          multiplicador: item.multiplier || null
+        }))
       : [];
 
-    const quantidadeAcertos = historico.filter(
-      item => item === "Deu certo"
-    ).length;
+    let prompt;
+    let maxTokens = 180;
 
-    const quantidadeFalhas = historico.filter(
-      item => item === "Não deu certo"
-    ).length;
+    if (jogo === "Aviator") {
+      prompt = `
+Você gera um alvo recreativo para o jogo Aviator.
 
-    const formato = jogo === "Aviator"
-      ? `
-FORMATO AVIATOR:
-- Trate exclusivamente de multiplicadores (exemplo: 1.50x).
-- Nunca use números, turbo ou normal dos jogos PG.
-- Não invente um multiplicador futuro.
-`
-      : `
-FORMATO PG:
-- Analise exclusivamente o módulo ${jogo}.
-- Não utilize multiplicadores com x.
-- Não misture informações do Aviator.
-- Não invente números ou resultados futuros.
+Escolha um número decimal entre 1.70 e 10.00.
+O número deve ter duas casas decimais.
+
+Considere o histórico abaixo apenas como contexto.
+Ele não permite prever rodadas futuras.
+
+HISTÓRICO:
+${JSON.stringify(historico)}
+
+IMPORTANTE:
+- Não afirme que o número é uma previsão.
+- Não afirme que o multiplicador será atingido.
+- Não use números abaixo de 1.70 ou acima de 10.00.
+- Não escreva explicações longas.
+
+Responda SOMENTE com um número, por exemplo:
+2.45
 `;
-
-    const prompt = `
+      maxTokens = 20;
+    } else {
+      prompt = `
 Você é a IA de análise do painel JN 01 VIP.
 
 JOGO: ${jogo}
 
-${formato}
-
 HISTÓRICO DE FEEDBACK:
-Total de avaliações: ${historico.length}
-Avaliações positivas: ${quantidadeAcertos}
-Avaliações negativas: ${quantidadeFalhas}
+${JSON.stringify(historico)}
 
-REGRAS:
-1. Responda em português brasileiro.
-2. Seja extremamente objetiva.
-3. Não escreva introduções longas.
-4. Não explique as regras do jogo.
-5. Não invente resultados, padrões ou dados.
-6. Não diga que consegue prever rodadas aleatórias.
-7. Considere o feedback anterior apenas como contexto.
-8. Não prometa ganhos ou acertos.
+Responda em português brasileiro, com no máximo 80 palavras.
 
-FORMATO OBRIGATÓRIO DA RESPOSTA:
+Não invente resultados, números ou padrões.
+Não afirme conhecer resultados futuros.
+Não prometa ganhos ou acertos garantidos.
+Considere o histórico apenas como contexto.
+
+Use este formato:
 
 ANÁLISE:
-Uma explicação curta, com no máximo duas frases.
+Uma explicação curta.
 
 HISTÓRICO:
-Uma frase curta sobre os feedbacks disponíveis.
+Uma frase sobre os feedbacks anteriores.
 
 ORIENTAÇÃO:
-Uma orientação recreativa e responsável, sem apresentar
-resultados inventados como previsões.
+Uma orientação recreativa e responsável.
 
-Tamanho máximo: 100 palavras.
+Não utilize multiplicadores do Aviator nos jogos PG.
 `;
+    }
 
     const response = await fetch(
       "https://openrouter.ai/api/v1/chat/completions",
@@ -142,17 +132,16 @@ Tamanho máximo: 100 palavras.
         body: JSON.stringify({
           model: "openai/gpt-4o-mini",
           messages: [
-            {
-              role: "system",
-              content: prompt
-            },
+            { role: "system", content: prompt },
             {
               role: "user",
-              content: `Gere a análise objetiva do módulo ${jogo}.`
+              content: jogo === "Aviator"
+                ? "Gere o alvo recreativo do Aviator."
+                : `Faça a análise do módulo ${jogo}.`
             }
           ],
-          temperature: 0.2,
-          max_tokens: 180
+          temperature: 0.5,
+          max_tokens: maxTokens
         })
       }
     );
@@ -161,24 +150,45 @@ Tamanho máximo: 100 palavras.
 
     if (!response.ok) {
       console.error("Erro OpenRouter:", data);
-
       return res.status(502).json({
         error: "Erro ao consultar a inteligência artificial."
       });
     }
 
-    const analise = data.choices?.[0]?.message?.content?.trim();
+    const conteudo = data.choices?.[0]?.message?.content?.trim();
 
-    if (!analise) {
+    if (!conteudo) {
       return res.status(502).json({
-        error: "A IA não retornou uma análise."
+        error: "A IA não retornou uma resposta."
+      });
+    }
+
+    if (jogo === "Aviator") {
+      const correspondencia = conteudo.match(/\b\d{1,2}(?:[.,]\d{1,2})?\b/);
+      const numero = correspondencia
+        ? Number(correspondencia[0].replace(",", "."))
+        : NaN;
+
+      if (!Number.isFinite(numero) || numero < 1.70 || numero > 10.00) {
+        return res.status(502).json({
+          error: "A IA não gerou um multiplicador válido. Tente novamente."
+        });
+      }
+
+      const multiplicador = `${numero.toFixed(2)}x`;
+
+      return res.status(200).json({
+        sucesso: true,
+        jogo,
+        multiplicador,
+        analise: "Alvo recreativo gerado pela IA. Não representa previsão de rodada."
       });
     }
 
     return res.status(200).json({
       sucesso: true,
       jogo,
-      analise
+      analise: conteudo
     });
 
   } catch (error) {
