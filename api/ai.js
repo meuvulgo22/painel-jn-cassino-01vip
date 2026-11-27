@@ -1,12 +1,8 @@
-
 import { createRemoteJWKSet, jwtVerify } from "jose";
 
 const PROJECT_ID = "painel-anac-gb";
-
 const GOOGLE_KEYS = createRemoteJWKSet(
-  new URL(
-    "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com"
-  )
+  new URL("https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com")
 );
 
 const GAMES = ["Tigre", "Touro", "Midas", "Aviator"];
@@ -36,12 +32,10 @@ function extrairImagem(dataUrl) {
     throw new Error("Envie uma imagem do histórico.");
   }
 
-  const match = dataUrl.match(
-    /^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/
-  );
+  const match = dataUrl.match(/^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/);
 
   if (!match) {
-    throw new Error("Formato inválido. Use JPG, PNG ou WEBP.");
+    throw new Error("Formato de imagem inválido. Use JPG, PNG ou WEBP.");
   }
 
   const base64 = match[2];
@@ -57,7 +51,7 @@ function extrairImagem(dataUrl) {
   };
 }
 
-async function chamarOpenRouter(apiKey, messages, maxTokens = 300) {
+async function chamarOpenRouter(apiKey, messages, maxTokens = 300, temperature = 0.2) {
   const response = await fetch(
     "https://openrouter.ai/api/v1/chat/completions",
     {
@@ -70,7 +64,7 @@ async function chamarOpenRouter(apiKey, messages, maxTokens = 300) {
       body: JSON.stringify({
         model: "openai/gpt-4o-mini",
         messages,
-        temperature: 0.1,
+        temperature,
         max_tokens: maxTokens
       })
     }
@@ -92,146 +86,93 @@ async function chamarOpenRouter(apiKey, messages, maxTokens = 300) {
   return conteudo.trim();
 }
 
-/* NORMALIZA OS MULTIPLICADORES */
+function normalizarMultiplicadores(conteudo) {
+  // Alguns retornos vêm como texto puro ou bloco JSON cercado por markdown.
+  const texto = Array.isArray(conteudo)
+    ? conteudo.map(parte => typeof parte === "string" ? parte : (parte?.text || "")).join("\n")
+    : String(conteudo || "");
 
-function normalizarMultiplicadores(lista) {
-  if (!Array.isArray(lista)) return [];
-
-  const resultado = [];
-
-  for (const item of lista) {
-    const texto = String(item).trim().replace(",", ".");
-
-    const match = texto.match(
-      /^(\d{1,5}(?:\.\d{1,4})?)\s*x?$/i
-    );
-
-    if (!match) continue;
-
-    const numero = Number(match[1]);
-
-    if (!Number.isFinite(numero) || numero < 1) continue;
-
-    resultado.push(`${numero.toFixed(2)}x`);
-  }
-
-  return resultado.slice(0, 80);
-}
-
-/* EXTRAI OS NÚMEROS DA RESPOSTA DA IA */
-
-function interpretarRespostaImagem(conteudo) {
-  const texto = conteudo
+  const limpo = texto
     .replace(/^```(?:json)?\s*/i, "")
     .replace(/\s*```$/i, "")
     .trim();
 
-  // Primeira tentativa: JSON completo
+  let valores = null;
   try {
-    const dados = JSON.parse(texto);
-
-    if (Array.isArray(dados.multiplicadores)) {
-      return normalizarMultiplicadores(dados.multiplicadores);
-    }
+    const json = JSON.parse(limpo);
+    if (Array.isArray(json)) valores = json;
+    else if (Array.isArray(json?.multiplicadores)) valores = json.multiplicadores;
+    else if (Array.isArray(json?.results)) valores = json.results;
   } catch {
-    // Continua para tentar localizar um JSON dentro do texto.
+    // Continua para a leitura tolerante do texto abaixo.
   }
 
-  // Segunda tentativa: JSON dentro de uma resposta maior
-  const trecho = texto.match(/\{[\s\S]*"multiplicadores"[\s\S]*\}/i);
+  if (!valores) {
+    // Primeiro tenta capturar valores explicitamente marcados como multiplicador.
+    const marcados = [...limpo.matchAll(/(\d{1,5}(?:[.,]\d{1,3})?)\s*x\b/gi)]
+      .map(match => match[1]);
 
-  if (trecho) {
-    try {
-      const dados = JSON.parse(trecho[0]);
-
-      if (Array.isArray(dados.multiplicadores)) {
-        return normalizarMultiplicadores(dados.multiplicadores);
-      }
-    } catch {
-      // Continua para a última tentativa.
+    if (marcados.length) {
+      valores = marcados;
+    } else {
+      // Fallback para listas simples como "2.34, 1.56, 8.90".
+      const linhas = limpo.split(/\r?\n/).filter(linha => /(?:^|[\s,:;•-])\d{1,5}[.,]\d{1,3}(?:\s|$)/.test(linha));
+      valores = linhas.flatMap(linha => linha.match(/\d{1,5}[.,]\d{1,3}/g) || []);
     }
   }
 
-  // Terceira tentativa: números explicitamente identificados com x
-  const encontrados = texto.match(
-    /\b\d{1,5}(?:[.,]\d{1,4})?\s*x\b/gi
-  ) || [];
+  const resultado = [];
+  for (const item of valores) {
+    const bruto = typeof item === "number" ? String(item) : String(item ?? "").trim();
+    const match = bruto.match(/^(\d{1,5})(?:[.,](\d{1,3}))?\s*x?$/i);
+    if (!match) continue;
 
-  return normalizarMultiplicadores(encontrados);
+    const numero = Number(`${match[1]}.${(match[2] || "").padEnd(2, "0").slice(0, 2)}`);
+    if (!Number.isFinite(numero) || numero < 1 || numero > 100000) continue;
+
+    const formatado = `${numero.toFixed(2)}x`;
+    if (resultado.length < 80) resultado.push(formatado);
+  }
+
+  return resultado;
 }
-
-/* LEITURA DO HISTÓRICO POR IMAGEM */
 
 async function lerHistoricoImagem(apiKey, imagem) {
   const conteudo = await chamarOpenRouter(apiKey, [
     {
       role: "system",
-      content: `
-Você é um sistema especializado em leitura visual de históricos do Aviator.
-
-Sua tarefa é identificar os multiplicadores das rodadas que aparecem na imagem.
+      content: `Você é um leitor visual de histórico do jogo Aviator. Analise a imagem inteira, inclusive as áreas pequenas do histórico. Identifique apenas os multiplicadores das rodadas (normalmente números coloridos seguidos de x).
 
 REGRAS OBRIGATÓRIAS:
-
-1. Observe cuidadosamente toda a imagem.
-2. Leia os resultados da esquerda para a direita e de cima para baixo.
-3. Identifique números acompanhados de x ou apresentados visualmente como multiplicadores.
-4. Aceite vírgula ou ponto decimal.
-5. Não confunda saldo, apostas, horários ou contadores com multiplicadores.
-6. Não invente números.
-7. Não complete números cortados ou ilegíveis.
-8. Preserve a ordem em que os resultados aparecem.
-9. Extraia todos os resultados que conseguir identificar com segurança, até 80.
-
-IMPORTANTE:
-Um multiplicador como 2,45 deve ser convertido para 2.45x.
-Um multiplicador como 1.08x deve permanecer 1.08x.
-
-Responda exclusivamente com JSON válido:
-
-{
-  "multiplicadores": ["2.45x", "1.08x", "3.20x"]
-}
-
-Se nenhum multiplicador puder ser identificado com segurança:
-
-{
-  "multiplicadores": []
-}
-`
+- Leia todos os multiplicadores visíveis, sem parar nos primeiros.
+- Mantenha a ordem em que aparecem na tela: da esquerda para a direita e de cima para baixo.
+- Preserve os dígitos e casas decimais que conseguir ler. Se aparecer vírgula decimal, converta para ponto.
+- Não confunda saldo, aposta, horário, número de jogadores ou outros elementos com multiplicadores.
+- Não invente nem complete números borrados ou cortados.
+- Retorne SOMENTE JSON válido, sem markdown, neste formato exato: {"multiplicadores":["2.84x","1.14x"]}
+- Se nenhum multiplicador puder ser lido com segurança, retorne {"multiplicadores":[]}.`
     },
     {
       role: "user",
       content: [
-        {
-          type: "text",
-          text: "Analise a imagem inteira e extraia os multiplicadores visíveis do histórico da ronda."
-        },
-        {
-          type: "image_url",
-          image_url: {
-            url: imagem.dataUrl
-          }
-        }
+        { type: "text", text: "Leia os multiplicadores de rodada que estão visíveis nesta captura. Amplie visualmente as regiões do histórico se necessário. Retorne a lista completa na ordem da tela." },
+        { type: "image_url", image_url: { url: imagem.dataUrl } }
       ]
     }
   ], 700);
 
-  return interpretarRespostaImagem(conteudo);
+  const validos = normalizarMultiplicadores(conteudo);
+  return validos;
 }
-
-/* ROTA PRINCIPAL */
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
-    return res.status(405).json({
-      error: "Utilize POST."
-    });
+    return res.status(405).json({ error: "Utilize POST." });
   }
 
   try {
     await authenticate(req);
-  } catch (error) {
+  } catch {
     return res.status(401).json({
       error: "Autenticação inválida. Faça login novamente."
     });
@@ -246,36 +187,21 @@ export default async function handler(req, res) {
   }
 
   try {
-    const {
-      action,
-      jogo,
-      feedback,
-      historicoReal
-    } = req.body || {};
-
-    /* AÇÃO DE LEITURA DA IMAGEM */
+    const { action, jogo, feedback, historicoReal, ultimosAlvos } = req.body || {};
 
     if (action === "ler_historico") {
       if (jogo !== "Aviator") {
-        return res.status(400).json({
-          error: "Leitura de imagem disponível apenas para Aviator."
-        });
+        return res.status(400).json({ error: "Leitura de imagem disponível apenas para Aviator." });
       }
 
       let imagem;
-
       try {
         imagem = extrairImagem(req.body.imagem);
       } catch (error) {
-        return res.status(400).json({
-          error: error.message
-        });
+        return res.status(400).json({ error: error.message });
       }
 
-      const multiplicadores = await lerHistoricoImagem(
-        apiKey,
-        imagem
-      );
+      const multiplicadores = await lerHistoricoImagem(apiKey, imagem);
 
       return res.status(200).json({
         sucesso: true,
@@ -285,15 +211,9 @@ export default async function handler(req, res) {
       });
     }
 
-    /* VALIDAÇÃO DOS JOGOS */
-
     if (!GAMES.includes(jogo)) {
-      return res.status(400).json({
-        error: "Jogo inválido."
-      });
+      return res.status(400).json({ error: "Jogo inválido." });
     }
-
-    /* HISTÓRICO DE FEEDBACK */
 
     const historicoFeedback = Array.isArray(feedback)
       ? feedback.slice(0, 20).map(item => ({
@@ -303,107 +223,102 @@ export default async function handler(req, res) {
       : [];
 
     let prompt;
-    let maxTokens = 300;
-
-    /* AVIATOR */
+    let maxTokens = 180;
+    let alvosRecentes = [];
 
     if (jogo === "Aviator") {
-      const rodadasReais = normalizarMultiplicadores(
-        Array.isArray(historicoReal) ? historicoReal : []
-      );
+      const rodadasReais = Array.isArray(historicoReal)
+        ? historicoReal
+            .filter(valor => typeof valor === "string" && /^(?:\d{1,2})(?:[.,]\d{1,2})x$/i.test(valor))
+            .slice(0, 80)
+        : [];
+      alvosRecentes = Array.isArray(ultimosAlvos)
+        ? ultimosAlvos.map(Number).filter(valor => Number.isFinite(valor) && valor >= 1.70 && valor <= 10).slice(-8)
+        : [];
 
       prompt = `
-Você gera uma análise recreativa para o jogo Aviator.
+Você gera um alvo recreativo para o jogo Aviator.
 
-Considere os dados enviados pelo usuário como histórico descritivo.
+Escolha um número decimal entre 1.70 e 10.00, com duas casas decimais.
+Considere os dados abaixo apenas como contexto descritivo. Resultados passados não permitem prever rodadas futuras.
 
-HISTÓRICO EXTRAÍDO DA IMAGEM:
+HISTÓRICO REAL EXTRAÍDO DE PRINT ENVIADO PELO USUÁRIO (pode conter erros de leitura):
 ${JSON.stringify(rodadasReais)}
 
-FEEDBACKS ANTERIORES:
+HISTÓRICO DE FEEDBACK DO PAINEL:
 ${JSON.stringify(historicoFeedback)}
 
-Não afirme que é possível prever a próxima rodada.
-Não invente resultados.
-Não prometa ganhos ou acertos.
-Não confunda os números do Aviator com os jogos PG.
+ÚLTIMOS ALVOS JÁ MOSTRADOS (NÃO REPITA NENHUM):
+${JSON.stringify(alvosRecentes)}
 
-Escolha um alvo recreativo entre 1.70 e 10.00, com duas casas decimais.
-
-Responda SOMENTE com o número.
-Exemplo: 2.45
+Escolha um valor diferente dos últimos alvos. Varie o resultado entre as solicitações. Não copie um número do histórico como se fosse o próximo resultado.
+Não afirme que o número é uma previsão nem que será atingido.
+Não invente padrões ou prometa ganhos.
+Responda SOMENTE com um número, por exemplo: 2.45
 `;
-
-      maxTokens = 30;
+      maxTokens = 20;
     } else {
-      /* JOGOS PG */
-
       prompt = `
-Você é a inteligência artificial do painel JN 01 VIP.
+Você é a IA de análise do painel JN 01 VIP.
 
 JOGO: ${jogo}
 
-FEEDBACKS ANTERIORES:
+HISTÓRICO DE FEEDBACK:
 ${JSON.stringify(historicoFeedback)}
 
-Considere os feedbacks para contextualizar novas análises.
-
-Não invente resultados ou números.
+Responda em português brasileiro, com no máximo 80 palavras.
+Não invente resultados, números ou padrões.
 Não afirme conhecer resultados futuros.
 Não prometa ganhos ou acertos garantidos.
-Não utilize multiplicadores do Aviator nos jogos PG.
-
-Responda em português brasileiro, com até 100 palavras.
+Considere o histórico apenas como contexto.
 
 Use este formato:
 
 ANÁLISE:
-Explique brevemente sua análise.
+Uma explicação curta.
 
 HISTÓRICO:
-Considere os feedbacks anteriores.
+Uma frase sobre os feedbacks anteriores.
 
 ORIENTAÇÃO:
-Apresente uma orientação recreativa e responsável.
+Uma orientação recreativa e responsável.
+
+Não utilize multiplicadores do Aviator nos jogos PG.
 `;
     }
 
-    const conteudo = await chamarOpenRouter(
-      apiKey,
-      [
-        {
-          role: "system",
-          content: prompt
-        },
-        {
-          role: "user",
-          content: jogo === "Aviator"
-            ? "Gere o alvo recreativo do Aviator."
-            : `Faça a análise do módulo ${jogo}.`
-        }
-      ],
-      maxTokens
-    );
-
-    /* RESPOSTA DO AVIATOR */
+    const conteudo = await chamarOpenRouter(apiKey, [
+      { role: "system", content: prompt },
+      {
+        role: "user",
+        content: jogo === "Aviator"
+          ? "Gere o alvo recreativo do Aviator."
+          : `Faça a análise do módulo ${jogo}.`
+      }
+    ], maxTokens, jogo === "Aviator" ? 0.85 : 0.2);
 
     if (jogo === "Aviator") {
-      const correspondencia = conteudo.match(
-        /\b\d{1,2}(?:[.,]\d{1,2})?\b/
-      );
-
-      const numero = correspondencia
+      const correspondencia = conteudo.match(/\b\d{1,2}(?:[.,]\d{1,2})?\b/);
+      let numero = correspondencia
         ? Number(correspondencia[0].replace(",", "."))
         : NaN;
 
-      if (
-        !Number.isFinite(numero) ||
-        numero < 1.70 ||
-        numero > 10.00
-      ) {
+      if (!Number.isFinite(numero) || numero < 1.70 || numero > 10.00) {
         return res.status(502).json({
           error: "A IA não gerou um multiplicador válido. Tente novamente."
         });
+      }
+
+      // Proteção contra respostas repetidas do modelo.
+      if (alvosRecentes.includes(Number(numero.toFixed(2)))) {
+        const bloqueados = new Set(alvosRecentes.map(valor => Number(valor.toFixed(2))));
+        bloqueados.add(Number(numero.toFixed(2)));
+        const alternativas = [];
+        for (let centavos = 170; centavos <= 1000; centavos++) {
+          const candidato = centavos / 100;
+          if (!bloqueados.has(candidato)) alternativas.push(candidato);
+        }
+        numero = alternativas[Math.floor(Math.random() * alternativas.length)];
       }
 
       return res.status(200).json({
@@ -414,8 +329,6 @@ Apresente uma orientação recreativa e responsável.
       });
     }
 
-    /* RESPOSTA DOS JOGOS PG */
-
     return res.status(200).json({
       sucesso: true,
       jogo,
@@ -424,7 +337,6 @@ Apresente uma orientação recreativa e responsável.
 
   } catch (error) {
     console.error("Erro interno:", error);
-
     return res.status(500).json({
       error: error.message || "Erro interno da inteligência artificial."
     });
