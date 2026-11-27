@@ -61,3 +61,5 @@ a{color:var(--gold);text-decoration:none}
 .page-footer span{color:var(--gold)}
 @media(max-width:650px){#painel{padding:12px}.topbar{padding-bottom:18px}.control-panel,.platform-section{padding:15px;margin-top:15px}.section-heading{align-items:flex-start}.system-state{font-size:9px}.game-buttons{gap:8px}.game-button{min-height:76px;padding:11px 9px;gap:8px}.game-icon{font-size:23px}.game-button strong{font-size:13px}.game-button small{font-size:8px}.workspace{padding:14px;min-height:190px}.frame-area{height:84vh;min-height:650px;border-radius:9px}.module-actions{align-items:flex-start;flex-direction:column}.platform-tag{font-size:9px}}
 @media(max-width:360px){.game-buttons{grid-template-columns:1fr}.section-heading{flex-direction:column}.system-state{margin-top:5px}}
+.aviator-attempt-note{margin-top:18px;color:#b8c4b9;font-size:12px;line-height:1.6}
+.aviator-attempt-note strong{color:#e5c65f}

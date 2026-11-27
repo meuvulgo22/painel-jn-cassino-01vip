@@ -10,39 +10,100 @@
 <body>
   <section id="login" class="auth-screen">
     <form class="auth-box" id="formLogin">
-      <div class="brand-mark">JN</div><h1>JN 01 VIP</h1><p class="muted">ACESSO À PLATAFORMA</p>
-      <label for="emailLogin">E-mail</label><input type="email" id="emailLogin" autocomplete="username" placeholder="Seu e-mail" required>
-      <label for="senhaLogin">Senha</label><input type="password" id="senhaLogin" autocomplete="current-password" placeholder="Sua senha" required>
+      <div class="brand-mark">JN</div>
+      <h1>JN 01 VIP</h1>
+      <p class="muted">ACESSO À PLATAFORMA</p>
+      <label for="emailLogin">E-mail</label>
+      <input type="email" id="emailLogin" autocomplete="username" placeholder="Seu e-mail" required>
+      <label for="senhaLogin">Senha</label>
+      <input type="password" id="senhaLogin" autocomplete="current-password" placeholder="Sua senha" required>
       <button class="primary-button" type="submit">ENTRAR</button>
-      <p class="auth-switch">Ainda não tem conta? <a href="#" id="linkCadastro">Criar conta</a></p><p class="auth-error" id="erroLogin" role="alert"></p>
+      <p class="auth-switch">Ainda não tem conta? <a href="#" id="linkCadastro">Criar conta</a></p>
+      <p class="auth-error" id="erroLogin" role="alert"></p>
     </form>
   </section>
+
   <section id="cadastro" class="auth-screen" hidden>
     <form class="auth-box" id="formCadastro">
-      <div class="brand-mark">JN</div><h1>Criar conta</h1><p class="muted">CADASTRO DE ACESSO</p>
-      <label for="emailCadastro">E-mail</label><input type="email" id="emailCadastro" autocomplete="username" placeholder="Seu e-mail" required>
-      <label for="senhaCadastro">Senha</label><input type="password" id="senhaCadastro" autocomplete="new-password" minlength="6" placeholder="Mínimo de 6 caracteres" required>
+      <div class="brand-mark">JN</div>
+      <h1>Criar conta</h1>
+      <p class="muted">CADASTRO DE ACESSO</p>
+      <label for="emailCadastro">E-mail</label>
+      <input type="email" id="emailCadastro" autocomplete="username" placeholder="Seu e-mail" required>
+      <label for="senhaCadastro">Senha</label>
+      <input type="password" id="senhaCadastro" autocomplete="new-password" minlength="6" placeholder="Mínimo de 6 caracteres" required>
       <button class="primary-button" type="submit">CADASTRAR</button>
-      <p class="auth-switch">Já tem conta? <a href="#" id="linkLogin">Voltar ao login</a></p><p class="auth-error" id="erroCadastro" role="alert"></p>
+      <p class="auth-switch">Já tem conta? <a href="#" id="linkLogin">Voltar ao login</a></p>
+      <p class="auth-error" id="erroCadastro" role="alert"></p>
     </form>
   </section>
+
   <main id="painel" hidden>
-    <header class="topbar"><div><div class="eyebrow">CENTRAL DE CONTROLE</div><h1>JN 01 <span>VIP</span></h1></div><button id="btnSair" class="logout-button" type="button">SAIR</button></header>
-    <section class="control-panel">
-      <div class="section-heading"><div><div class="eyebrow">MÓDULOS</div><h2>Selecione uma área</h2></div><span class="system-state"><i></i> SISTEMA ONLINE</span></div>
-      <div class="game-buttons">
-        <button class="game-button tiger" type="button" data-game="Tigre"><span class="game-icon">🐯</span><span><strong>TIGRE</strong><small>ABRIR MÓDULO</small></span><span class="button-arrow">›</span></button>
-        <button class="game-button bull" type="button" data-game="Touro"><span class="game-icon">🐂</span><span><strong>TOURO</strong><small>ABRIR MÓDULO</small></span><span class="button-arrow">›</span></button>
-        <button class="game-button bull" type="button" data-game="Midas"><span class="game-icon">💰</span><span><strong>MIDAS</strong><small>ABRIR MÓDULO</small></span><span class="button-arrow">›</span></button>
-        <button class="game-button aviator" type="button" data-game="Aviator"><span class="game-icon">✈️</span><span><strong>AVIATOR</strong><small>ABRIR MÓDULO</small></span><span class="button-arrow">›</span></button>
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">CENTRAL DE CONTROLE</div>
+        <h1>JN 01 <span>VIP</span></h1>
       </div>
-      <div id="workspace" class="workspace" aria-live="polite"><div class="workspace-placeholder"><div class="scan-icon">⌁</div><h3>ÁREA DE OPERAÇÃO</h3><p>Selecione um módulo para abrir a respectiva área.</p></div></div>
+      <button id="btnSair" class="logout-button" type="button">SAIR</button>
+    </header>
+
+    <section class="control-panel">
+      <div class="section-heading">
+        <div>
+          <div class="eyebrow">MÓDULOS</div>
+          <h2>Selecione uma área</h2>
+        </div>
+        <span class="system-state"><i></i> SISTEMA ONLINE</span>
+      </div>
+
+      <div class="game-buttons">
+        <button class="game-button tiger" type="button" data-game="Tigre">
+          <span class="game-icon">🐯</span>
+          <span><strong>TIGRE</strong><small>ABRIR MÓDULO</small></span>
+          <span class="button-arrow">›</span>
+        </button>
+        <button class="game-button bull" type="button" data-game="Touro">
+          <span class="game-icon">🐂</span>
+          <span><strong>TOURO</strong><small>ABRIR MÓDULO</small></span>
+          <span class="button-arrow">›</span>
+        </button>
+        <button class="game-button bull" type="button" data-game="Midas">
+          <span class="game-icon">💰</span>
+          <span><strong>MIDAS</strong><small>ABRIR MÓDULO</small></span>
+          <span class="button-arrow">›</span>
+        </button>
+        <button class="game-button bull" type="button" data-game="Aviator">
+          <span class="game-icon">✈️</span>
+          <span><strong>AVIATOR</strong><small>ABRIR MÓDULO</small></span>
+          <span class="button-arrow">›</span>
+        </button>
+      </div>
+
+      <div id="workspace" class="workspace" aria-live="polite">
+        <div class="workspace-placeholder">
+          <div class="scan-icon">⌁</div>
+          <h3>ÁREA DE OPERAÇÃO</h3>
+          <p>Selecione um módulo para abrir sua área de operação.</p>
+        </div>
+      </div>
     </section>
+
     <section class="platform-section">
-      <div class="section-heading platform-heading"><div><div class="eyebrow">AMBIENTE EXTERNO</div><h2>Plataforma</h2></div><span class="platform-tag">VISUALIZAÇÃO</span></div>
-      <div class="frame-area"><iframe src="https://r4tc091778-d0gva8hdgth8g8g2.a01.azurefd.net/?dl=99aqyu" title="Plataforma externa" loading="lazy" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>
+      <div class="section-heading platform-heading">
+        <div>
+          <div class="eyebrow">AMBIENTE EXTERNO</div>
+          <h2>Plataforma</h2>
+        </div>
+        <span class="platform-tag">VISUALIZAÇÃO</span>
+      </div>
+      <div class="frame-area">
+        <iframe src="https://r4tc091778-d0gva8hdgth8g8g2.a01.azurefd.net/?dl=99aqyu"
+          title="Plataforma externa" loading="lazy" allowfullscreen
+          referrerpolicy="strict-origin-when-cross-origin"></iframe>
+      </div>
       <p class="frame-note">Se o conteúdo não carregar, verifique se a plataforma externa permite incorporação em iframe.</p>
     </section>
+
     <footer class="page-footer">JN 01 VIP <span>•</span> PAINEL DE INTERFACE</footer>
   </main>
   <script type="module" src="main.js"></script>

@@ -1,24 +1,10 @@
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-
 import {
-  getAuth,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  onAuthStateChanged,
-  setPersistence,
-  browserLocalPersistence,
-  signOut
+  getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+  onAuthStateChanged, setPersistence, browserLocalPersistence, signOut
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-
 import {
-  getFirestore,
-  collection,
-  addDoc,
-  getDocs,
-  query,
-  where,
-  limit
+  getFirestore, collection, addDoc, getDocs, query, where, limit
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -34,11 +20,9 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-
 setPersistence(auth, browserLocalPersistence).catch(console.error);
 
 const $ = id => document.getElementById(id);
-
 const loginScreen = $("login");
 const cadastroScreen = $("cadastro");
 const painel = $("painel");
@@ -47,7 +31,6 @@ const workspace = $("workspace");
 let usuarioAtual = null;
 let processamentoAtual = 0;
 let analiseAtual = null;
-let historicoRealAviator = [];
 
 function showScreen(screen) {
   loginScreen.hidden = screen !== "login";
@@ -55,14 +38,11 @@ function showScreen(screen) {
   painel.hidden = screen !== "painel";
 }
 
-/* LOGIN */
-
 $("linkCadastro").addEventListener("click", event => {
   event.preventDefault();
   $("erroCadastro").textContent = "";
   showScreen("cadastro");
 });
-
 $("linkLogin").addEventListener("click", event => {
   event.preventDefault();
   $("erroLogin").textContent = "";
@@ -72,13 +52,8 @@ $("linkLogin").addEventListener("click", event => {
 $("formLogin").addEventListener("submit", async event => {
   event.preventDefault();
   $("erroLogin").textContent = "";
-
   try {
-    await signInWithEmailAndPassword(
-      auth,
-      $("emailLogin").value.trim(),
-      $("senhaLogin").value
-    );
+    await signInWithEmailAndPassword(auth, $("emailLogin").value.trim(), $("senhaLogin").value);
   } catch (error) {
     $("erroLogin").textContent = traduzirErro(error);
   }
@@ -87,25 +62,16 @@ $("formLogin").addEventListener("submit", async event => {
 $("formCadastro").addEventListener("submit", async event => {
   event.preventDefault();
   $("erroCadastro").textContent = "";
-
   try {
-    await createUserWithEmailAndPassword(
-      auth,
-      $("emailCadastro").value.trim(),
-      $("senhaCadastro").value
-    );
-    showScreen("painel");
+    await createUserWithEmailAndPassword(auth, $("emailCadastro").value.trim(), $("senhaCadastro").value);
   } catch (error) {
     $("erroCadastro").textContent = traduzirErro(error);
   }
 });
 
 $("btnSair").addEventListener("click", async () => {
-  try {
-    await signOut(auth);
-  } catch (error) {
-    alert("Não foi possível sair: " + traduzirErro(error));
-  }
+  try { await signOut(auth); }
+  catch (error) { alert("Não foi possível sair: " + traduzirErro(error)); }
 });
 
 onAuthStateChanged(auth, user => {
@@ -125,21 +91,15 @@ function traduzirErro(error) {
     "auth/weak-password": "A senha precisa ter pelo menos 6 caracteres.",
     "auth/too-many-requests": "Muitas tentativas. Aguarde e tente novamente."
   };
-
-  return mensagens[error.code] ||
-    "Não foi possível concluir. Verifique a conexão.";
+  return mensagens[error.code] || "Não foi possível concluir. Verifique a conexão.";
 }
-
-/* MÓDULOS */
 
 const jogos = ["Tigre", "Touro", "Midas", "Aviator"];
 
 function abrirModulo(nome) {
   if (!jogos.includes(nome)) return;
-
   processamentoAtual++;
   analiseAtual = null;
-
   const aviator = nome === "Aviator";
 
   workspace.innerHTML = `
@@ -147,359 +107,151 @@ function abrirModulo(nome) {
       <h3>${nome.toUpperCase()}</h3>
       <span class="module-badge">IA CONECTADA</span>
     </div>
-
     <div class="terminal-window" aria-live="polite">
-      <div class="terminal-line current" id="terminal1">
-        MÓDULO ${nome.toUpperCase()} INICIALIZADO
-      </div>
-      <div class="terminal-line" id="terminal2">
-        AGUARDANDO SOLICITAÇÃO
-      </div>
-      <div class="terminal-line" id="terminal3">
-        SISTEMA PRONTO
-      </div>
+      <div class="terminal-line current" id="terminal1">MÓDULO ${nome.toUpperCase()} INICIALIZADO</div>
+      <div class="terminal-line" id="terminal2">AGUARDANDO SOLICITAÇÃO</div>
+      <div class="terminal-line" id="terminal3">SISTEMA PRONTO</div>
     </div>
-
-    ${aviator ? `
-    <section class="aviator-history-reader">
-      <div class="history-reader-heading">
-        <strong>📸 Ler histórico do Aviator</strong>
-        <small>Envie um print da aba “Histórico da ronda”.</small>
-      </div>
-      <input id="aviatorHistoryImage" type="file" accept="image/png,image/jpeg,image/webp">
-      <button id="btnLerHistorico" type="button">LER HISTÓRICO DA IMAGEM</button>
-      <p id="aviatorHistoryStatus" aria-live="polite">A imagem será analisada pela IA.</p>
-      <div id="aviatorHistoryResults" hidden></div>
-    </section>
-    ` : ""}
 
     <section class="generated-combination" id="generatedCombination" hidden>
       <div class="combination-heading">
         <div>
-          <span class="combination-kicker">
-            ${aviator ? "ALVO RECREATIVO" : "INTELIGÊNCIA ARTIFICIAL"}
-          </span>
+          <span class="combination-kicker">${aviator ? "ALVO RECREATIVO" : "INTELIGÊNCIA ARTIFICIAL"}</span>
           <h4>${aviator ? "Multiplicador gerado" : `Análise do ${nome}`}</h4>
         </div>
         <span class="combination-state">GERADO</span>
       </div>
-
       <div id="aiAnalysis" class="ai-analysis"></div>
-
       <div id="aviatorTarget" class="aviator-target" hidden>
         <span>MULTIPLICADOR SUGERIDO</span>
         <strong id="aviatorMultiplier">--.--x</strong>
         <small>Alvo recreativo, não é previsão de resultado.</small>
+        <p class="aviator-attempt-note"><strong>Limite de tentativas</strong><br>Faça no máximo 3 tentativas com este alvo. Se não atingir, encerre e aguarde uma nova análise.</p>
       </div>
-
       <p class="combination-footnote" id="combinationFootnote"></p>
-
       <div class="feedback-area" id="feedbackArea" hidden>
         <p>Como foi o resultado dessa análise?</p>
-
         <div class="feedback-buttons">
-          <button type="button" class="feedback-success" id="feedbackSuccess">
-            ✓ DEU CERTO
-          </button>
-          <button type="button" class="feedback-failure" id="feedbackFailure">
-            ✕ NÃO DEU CERTO
-          </button>
+          <button type="button" class="feedback-success" id="feedbackSuccess">✓ DEU CERTO</button>
+          <button type="button" class="feedback-failure" id="feedbackFailure">✕ NÃO DEU CERTO</button>
         </div>
-
         <p class="feedback-status" id="feedbackStatus"></p>
       </div>
     </section>
 
+    <section class="image-analysis-area">
+      <p><strong>ANALISAR IMAGEM</strong></p>
+      <p class="image-help">Selecione uma captura de tela do histórico/resultados deste jogo.</p>
+      <input type="file" id="gameImage" accept="image/png,image/jpeg,image/webp">
+      <button type="button" class="run-button" id="btnAnalisarImagem">ANALISAR IMAGEM</button>
+      <p class="feedback-status" id="imageStatus" aria-live="polite"></p>
+      <div class="ai-analysis" id="imageResult" hidden></div>
+    </section>
+
     <div class="module-actions">
-      <button class="run-button" id="btnProcessar" type="button">
-        SOLICITAR ANÁLISE DA IA
-      </button>
-      <p class="module-status" id="moduleStatus">
-        Módulo selecionado. Aguardando solicitação.
-      </p>
+      <button class="run-button" id="btnProcessar" type="button">SOLICITAR ANÁLISE DA IA</button>
+      <p class="module-status" id="moduleStatus">Módulo selecionado. Aguardando solicitação.</p>
     </div>
   `;
 
-  $("btnProcessar").addEventListener("click", () => {
-    processarModulo(nome);
-  });
-
-  if (aviator) {
-    $("btnLerHistorico").addEventListener("click", lerHistoricoPorImagem);
-  }
-
-  $("feedbackSuccess").addEventListener("click", () => {
-    registrarFeedback(nome, "Deu certo");
-  });
-
-  $("feedbackFailure").addEventListener("click", () => {
-    registrarFeedback(nome, "Não deu certo");
-  });
+  $("btnProcessar").addEventListener("click", () => processarModulo(nome));
+  $("feedbackSuccess").addEventListener("click", () => registrarFeedback(nome, "Deu certo"));
+  $("feedbackFailure").addEventListener("click", () => registrarFeedback(nome, "Não deu certo"));
+  $("btnAnalisarImagem").addEventListener("click", () => analisarImagem(nome));
 }
 
-/* HISTÓRICO DO JOGO SELECIONADO */
-
 async function carregarFeedback(nome) {
-  if (!usuarioAtual) {
-    throw new Error("Faça login novamente.");
-  }
-
-  const referencia = collection(
-    db,
-    "users",
-    usuarioAtual.uid,
-    "gameFeedback"
-  );
-
-  const consulta = query(
-    referencia,
-    where("game", "==", nome),
-    limit(50)
-  );
-
-  const resultado = await getDocs(consulta);
-
+  if (!usuarioAtual) throw new Error("Faça login novamente.");
+  const referencia = collection(db, "users", usuarioAtual.uid, "gameFeedback");
+  const resultado = await getDocs(query(referencia, where("game", "==", nome), limit(50)));
   return resultado.docs
-    .map(documento => documento.data())
-    .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+    .map(doc => doc.data())
+    .sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0))
     .slice(0, 20)
     .map(item => ({
       outcome: item.outcome,
-      multiplier: item.multiplier || null
+      multiplier: item.multiplier || null,
+      suggestion: item.suggestion || null
     }));
 }
 
-/* CONSULTA À IA */
+async function carregarAnalisesImagem(nome) {
+  if (!usuarioAtual) throw new Error("Faça login novamente.");
+  const referencia = collection(db, "users", usuarioAtual.uid, "gameImageAnalyses");
+  const resultado = await getDocs(query(referencia, where("game", "==", nome), limit(30)));
+  return resultado.docs
+    .map(doc => doc.data())
+    .sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0))
+    .slice(0, 10)
+    .map(item => ({
+      analysis: item.analysis || "",
+      extractedResults: item.extractedResults || []
+    }));
+}
 
-async function consultarIA(nome, feedback, historicoReal = []) {
-  if (!usuarioAtual) {
-    throw new Error("Sua sessão expirou. Entre novamente.");
-  }
-
+async function chamarApi(payload) {
+  if (!usuarioAtual) throw new Error("Sua sessão expirou. Entre novamente.");
   const token = await usuarioAtual.getIdToken();
-
   const resposta = await fetch("/api/ai", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${token}`
     },
-    body: JSON.stringify({
-      jogo: nome,
-      feedback,
-      historicoReal: nome === "Aviator" ? historicoReal : []
-    })
+    body: JSON.stringify(payload)
   });
-
   let dados;
+  try { dados = await resposta.json(); }
+  catch { throw new Error("Resposta inválida do servidor."); }
+  if (!resposta.ok) throw new Error(dados.error || "Não foi possível consultar a IA.");
+  return dados;
+}
 
-  try {
-    dados = await resposta.json();
-  } catch {
-    throw new Error("Resposta inválida do servidor.");
-  }
-
-  if (!resposta.ok) {
-    throw new Error(
-      dados.error || "Não foi possível consultar a IA."
-    );
-  }
-
+async function consultarIA(nome, feedback, analisesAnteriores) {
+  const dados = await chamarApi({ jogo: nome, feedback, analisesAnteriores });
   if (nome === "Aviator") {
-    const valor = Number(
-      String(dados.multiplicador || "").replace(/x/gi, "").replace(",", ".")
-    );
-
+    const valor = Number(String(dados.multiplicador || "").replace(/x/gi, "").replace(",", "."));
     if (!Number.isFinite(valor) || valor < 1.70 || valor > 10) {
       throw new Error("A IA retornou um multiplicador inválido.");
     }
-
-    return {
-      multiplicador: `${valor.toFixed(2)}x`,
-      analise: dados.analise || "Alvo recreativo gerado."
-    };
+    return { multiplicador: `${valor.toFixed(2)}x`, analise: dados.analise || "Alvo recreativo gerado." };
   }
-
-  if (!dados.analise) {
-    throw new Error("A IA não retornou uma análise.");
-  }
-
-  return {
-    analise: dados.analise
-  };
+  if (!dados.analise) throw new Error("A IA não retornou uma análise.");
+  return { analise: dados.analise };
 }
-
-/* LEITURA DO HISTÓRICO REAL POR IMAGEM (AVIATOR) */
-
-function prepararImagemHistorico(file) {
-  return new Promise((resolve, reject) => {
-    if (!file || !["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      reject(new Error("Escolha uma imagem JPG, PNG ou WEBP."));
-      return;
-    }
-
-    if (file.size > 8 * 1024 * 1024) {
-      reject(new Error("A imagem deve ter no máximo 8 MB."));
-      return;
-    }
-
-    const reader = new FileReader();
-
-    reader.onerror = () => reject(new Error("Não foi possível abrir a imagem."));
-    reader.onload = () => {
-      const imagem = new Image();
-
-      imagem.onerror = () => reject(new Error("A imagem selecionada é inválida."));
-      imagem.onload = () => {
-        const limite = 1600;
-        const escala = Math.min(1, limite / Math.max(imagem.width, imagem.height));
-        const canvas = document.createElement("canvas");
-
-        canvas.width = Math.max(1, Math.round(imagem.width * escala));
-        canvas.height = Math.max(1, Math.round(imagem.height * escala));
-
-        const contexto = canvas.getContext("2d");
-        contexto.drawImage(imagem, 0, 0, canvas.width, canvas.height);
-
-        const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
-
-        if (dataUrl.length > 4_000_000) {
-          reject(new Error("A imagem ficou muito grande. Envie um print menor."));
-          return;
-        }
-
-        resolve(dataUrl);
-      };
-
-      imagem.src = reader.result;
-    };
-
-    reader.readAsDataURL(file);
-  });
-}
-
-async function lerHistoricoPorImagem() {
-  const input = $("aviatorHistoryImage");
-  const button = $("btnLerHistorico");
-  const status = $("aviatorHistoryStatus");
-  const results = $("aviatorHistoryResults");
-  const file = input?.files?.[0];
-
-  if (!file) {
-    status.textContent = "Primeiro escolha um print do histórico.";
-    return;
-  }
-
-  if (!usuarioAtual) {
-    status.textContent = "Faça login novamente para continuar.";
-    return;
-  }
-
-  button.disabled = true;
-  button.textContent = "LENDO IMAGEM...";
-  status.textContent = "Preparando imagem para a IA...";
-  results.hidden = true;
-
-  try {
-    const imagem = await prepararImagemHistorico(file);
-    const token = await usuarioAtual.getIdToken();
-
-    status.textContent = "A IA está identificando os multiplicadores...";
-
-    const resposta = await fetch("/api/ai", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        action: "ler_historico",
-        jogo: "Aviator",
-        imagem
-      })
-    });
-
-    let dados;
-    try {
-      dados = await resposta.json();
-    } catch {
-      throw new Error("O servidor retornou uma resposta inválida.");
-    }
-
-    if (!resposta.ok) {
-      throw new Error(dados.error || "Não foi possível ler a imagem.");
-    }
-
-    if (!Array.isArray(dados.multiplicadores) || !dados.multiplicadores.length) {
-      throw new Error("Não encontrei multiplicadores legíveis. Tente um print mais nítido.");
-    }
-
-    historicoRealAviator = dados.multiplicadores.slice(0, 80);
-
-    results.textContent =
-      `Multiplicadores identificados (${historicoRealAviator.length}): ` +
-      historicoRealAviator.join(" · ");
-    results.hidden = false;
-
-    status.textContent =
-      "Histórico lido. Ele será enviado como contexto na próxima análise do Aviator.";
-  } catch (error) {
-    console.error("Erro ao ler histórico do Aviator:", error);
-    status.textContent = error.message || "Falha ao ler o histórico.";
-  } finally {
-    button.disabled = false;
-    button.textContent = "LER HISTÓRICO DA IMAGEM";
-  }
-}
-
-/* PROCESSAR MÓDULO */
 
 async function processarModulo(nome) {
   const button = $("btnProcessar");
   const status = $("moduleStatus");
-
   if (!button || button.disabled) return;
-
   const meuProcessamento = ++processamentoAtual;
-
   button.disabled = true;
   button.textContent = "CONSULTANDO IA...";
-
   $("generatedCombination").hidden = true;
   $("feedbackArea").hidden = true;
   $("aiAnalysis").textContent = "";
   $("aviatorTarget").hidden = true;
-
   status.textContent = "Preparando análise...";
-
   const passos = [
     `INICIALIZANDO ${nome.toUpperCase()}...`,
-    "CONSULTANDO HISTÓRICO DE FEEDBACK...",
+    "CONSULTANDO HISTÓRICO SALVO...",
     "SOLICITANDO RESPOSTA À INTELIGÊNCIA ARTIFICIAL..."
   ];
-
   const ids = ["terminal1", "terminal2", "terminal3"];
 
   try {
     for (let i = 0; i < passos.length; i++) {
       if (meuProcessamento !== processamentoAtual) return;
-
       $(ids[i]).textContent = passos[i];
       status.textContent = passos[i];
-
-      await new Promise(resolve => window.setTimeout(resolve, 350));
+      await new Promise(resolve => window.setTimeout(resolve, 250));
     }
-
-    const feedback = await carregarFeedback(nome);
-
+    const [feedback, analises] = await Promise.all([
+      carregarFeedback(nome),
+      carregarAnalisesImagem(nome)
+    ]);
     if (meuProcessamento !== processamentoAtual) return;
-
-    const resultado = await consultarIA(
-      nome,
-      feedback,
-      nome === "Aviator" ? historicoRealAviator : []
-    );
-
+    const resultado = await consultarIA(nome, feedback, analises);
     if (meuProcessamento !== processamentoAtual) return;
 
     analiseAtual = {
@@ -510,334 +262,159 @@ async function processarModulo(nome) {
 
     if (nome === "Aviator") {
       $("aviatorMultiplier").textContent = resultado.multiplicador;
-      $("aviatorTarget").insertAdjacentHTML(
-  "beforeend",
-  `<p class="aviator-attempt-note">
-    <strong>Limite de tentativas</strong><br>
-    Faça no máximo 3 tentativas com este alvo. Se não atingir, encerre e aguarde uma nova análise.
-  </p>`
-);
       $("aviatorTarget").hidden = false;
       $("aiAnalysis").textContent = resultado.analise;
-      $("combinationFootnote").textContent =
-        "Formato exclusivo Aviator: multiplicador entre 1.70x e 10.00x.";
+      $("combinationFootnote").textContent = "Formato exclusivo Aviator: multiplicador entre 1.70x e 10.00x.";
     } else {
       $("aiAnalysis").textContent = resultado.analise;
-      $("combinationFootnote").textContent =
-        `Análise textual do módulo ${nome}. Não representa previsão de resultado.`;
+      $("combinationFootnote").textContent = `Análise textual do módulo ${nome}.`;
     }
 
     $("generatedCombination").hidden = false;
     $("feedbackArea").hidden = false;
     $("terminal3").textContent = "RESPOSTA RECEBIDA DO SERVIDOR";
-
-    status.textContent =
-      `Análise de ${nome} recebida. Você pode avaliar o resultado.`;
-
+    status.textContent = `Análise de ${nome} recebida. Você pode avaliar o resultado.`;
     button.textContent = "GERAR NOVA ANÁLISE";
-
   } catch (error) {
     if (meuProcessamento !== processamentoAtual) return;
-
     console.error("Erro na análise:", error);
-
-    status.textContent = error.message ||
-      "Não foi possível concluir a análise.";
-
+    status.textContent = error.message || "Não foi possível concluir a análise.";
     $("terminal3").textContent = "ERRO NA CONSULTA DA IA";
     button.textContent = "TENTAR NOVAMENTE";
-
   } finally {
-    if (meuProcessamento === processamentoAtual && button.isConnected) {
-      button.disabled = false;
-    }
+    if (meuProcessamento === processamentoAtual && button.isConnected) button.disabled = false;
   }
 }
-
-/* SALVAR FEEDBACK */
 
 async function registrarFeedback(nome, resultado) {
   const sucesso = $("feedbackSuccess");
   const falha = $("feedbackFailure");
   const status = $("feedbackStatus");
-
   if (!usuarioAtual || !analiseAtual || analiseAtual.jogo !== nome) {
     status.textContent = "Solicite uma análise antes de avaliar.";
     return;
   }
-
   sucesso.disabled = true;
   falha.disabled = true;
   status.textContent = "Salvando feedback...";
-
   try {
-    const referencia = collection(
-      db,
-      "users",
-      usuarioAtual.uid,
-      "gameFeedback"
-    );
-
+    const referencia = collection(db, "users", usuarioAtual.uid, "gameFeedback");
     const registro = {
       game: nome,
       outcome: resultado,
+      suggestion: analiseAtual.multiplicador || analiseAtual.analise.slice(0, 120),
       createdAt: Date.now()
     };
-
-    if (nome === "Aviator") {
-      registro.multiplier = analiseAtual.multiplicador;
-    }
-
+    if (nome === "Aviator") registro.multiplier = analiseAtual.multiplicador;
     await addDoc(referencia, registro);
-
-    status.textContent =
-      `Feedback salvo: ${resultado}. ${nome === "Aviator" ? "Multiplicador: " + analiseAtual.multiplicador : ""}`;
-
+    status.textContent = `Feedback salvo: ${resultado}.`;
   } catch (error) {
     console.error("Erro ao salvar feedback:", error);
-
-    status.textContent =
-      "Erro ao salvar. Verifique as regras do Firestore.";
-
+    status.textContent = "Erro ao salvar. Verifique as regras do Firestore.";
     sucesso.disabled = false;
     falha.disabled = false;
   }
 }
 
-/* CLIQUES DOS MÓDULOS */
+async function analisarImagem(nome) {
+  const input = $("gameImage");
+  const button = $("btnAnalisarImagem");
+  const status = $("imageStatus");
+  const output = $("imageResult");
+  const file = input.files?.[0];
+
+  if (!file) {
+    status.textContent = "Escolha uma imagem primeiro.";
+    return;
+  }
+  if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+    status.textContent = "Formato não suportado. Use PNG, JPG ou WEBP.";
+    return;
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    status.textContent = "A imagem precisa ter até 5 MB.";
+    return;
+  }
+
+  button.disabled = true;
+  button.textContent = "ANALISANDO...";
+  status.textContent = "Enviando imagem para análise...";
+  output.hidden = true;
+
+  try {
+    const imagem = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error("Não foi possível ler a imagem."));
+      reader.readAsDataURL(file);
+    });
+
+    const dados = await chamarApi({
+      acao: "analisar-imagem",
+      jogo: nome,
+      imagem
+    });
+
+    const texto = String(dados.analise || "");
+    const valores = [...texto.matchAll(/\b\d{1,3}(?:[.,]\d{1,2})?\s*x\b/gi)]
+      .map(match => match[0])
+      .slice(0, 50);
+
+    const referencia = collection(db, "users", usuarioAtual.uid, "gameImageAnalyses");
+    await addDoc(referencia, {
+      game: nome,
+      analysis: texto.slice(0, 5000),
+      extractedResults: valores,
+      fileName: String(file.name || "imagem").slice(0, 120),
+      createdAt: Date.now()
+    });
+
+    output.textContent = texto;
+    output.hidden = false;
+    status.textContent = "Análise concluída e salva no histórico.";
+  } catch (error) {
+    console.error("Erro na análise da imagem:", error);
+    status.textContent = error.message || "Não foi possível analisar a imagem.";
+  } finally {
+    button.disabled = false;
+    button.textContent = "ANALISAR IMAGEM";
+  }
+}
 
 document.querySelectorAll("[data-game]").forEach(button => {
-  button.addEventListener("click", () => {
-    abrirModulo(button.dataset.game);
-  });
+  button.addEventListener("click", () => abrirModulo(button.dataset.game));
 });
-
-/* ESTILOS */
 
 if (!document.getElementById("jnCombinationStyles")) {
   const style = document.createElement("style");
   style.id = "jnCombinationStyles";
-
   style.textContent = `
-    .generated-combination {
-      margin-top:18px;
-      padding:17px;
-      border:1px solid rgba(214,179,75,.24);
-      border-radius:12px;
-      background:linear-gradient(145deg,rgba(18,28,20,.98),rgba(7,12,9,.98));
-      animation:jnReveal .35s ease both;
-    }
-
-    .generated-combination[hidden],
-    .aviator-target[hidden] {
-      display:none!important;
-    }
-
-    .combination-heading {
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      margin-bottom:14px;
-    }
-
-    .combination-kicker {
-      color:#8d9990;
-      font-size:9px;
-      letter-spacing:1.8px;
-    }
-
-    .combination-heading h4 {
-      margin-top:5px;
-      color:#f0f2ed;
-      font-size:16px;
-      font-weight:700;
-    }
-
-    .combination-state {
-      padding:6px 9px;
-      border:1px solid rgba(53,217,130,.3);
-      border-radius:30px;
-      color:#35d982;
-      font-size:8px;
-      font-weight:700;
-    }
-
-    .ai-analysis {
-      padding:14px;
-      border:1px solid rgba(214,179,75,.2);
-      border-radius:9px;
-      background:rgba(0,0,0,.2);
-      color:#e5eae5;
-      font-size:13px;
-      line-height:1.7;
-      white-space:pre-wrap;
-      overflow-wrap:anywhere;
-    }
-
-    .aviator-target {
-      margin-top:12px;
-      padding:20px 12px;
-      border:1px solid rgba(214,179,75,.35);
-      border-radius:12px;
-      background:linear-gradient(145deg,#17251a,#090e0a);
-      text-align:center;
-    }
-
-    .aviator-target span,
-    .aviator-target small {
-      display:block;
-      color:#aab5aa;
-      font-size:10px;
-      letter-spacing:1px;
-    }
-
-    .aviator-target strong {
-      display:block;
-      margin:12px 0;
-      color:#e5c65f;
-      font-size:clamp(42px,12vw,62px);
-      font-weight:900;
-      line-height:1;
-    }
-
-    .combination-footnote {
-      margin-top:12px;
-      color:#9aa49b;
-      font-size:10px;
-      line-height:1.6;
-    }
-
-    .feedback-area {
-      margin-top:17px;
-      padding-top:14px;
-      border-top:1px solid rgba(214,179,75,.17);
-    }
-
-    .feedback-area > p:first-child {
-      margin-bottom:10px;
-      color:#e5eae5;
-      font-size:12px;
-      font-weight:700;
-    }
-
-    .feedback-buttons {
-      display:grid;
-      grid-template-columns:1fr 1fr;
-      gap:9px;
-    }
-
-    .feedback-buttons button {
-      min-height:42px;
-      padding:9px 7px;
-      border-radius:8px;
-      font-size:10px;
-      font-weight:800;
-      cursor:pointer;
-    }
-
-    .feedback-success {
-      border:1px solid rgba(53,217,130,.4);
-      background:rgba(53,217,130,.1);
-      color:#55e49a;
-    }
-
-    .feedback-failure {
-      border:1px solid rgba(255,100,100,.35);
-      background:rgba(255,100,100,.08);
-      color:#ff9292;
-    }
-
-    .feedback-buttons button:disabled {
-      opacity:.45;
-      cursor:not-allowed;
-    }
-
-    .feedback-status {
-      margin-top:10px;
-      color:#aab5aa;
-      font-size:10px;
-      line-height:1.5;
-    }
-
-    .aviator-history-reader {
-      margin:16px 0;
-      padding:15px;
-      border:1px solid rgba(214,179,75,.28);
-      border-radius:12px;
-      background:linear-gradient(145deg,rgba(18,28,20,.96),rgba(7,12,9,.96));
-    }
-
-    .history-reader-heading strong,
-    .history-reader-heading small {
-      display:block;
-    }
-
-    .history-reader-heading strong {
-      color:#f0e2a8;
-      font-size:13px;
-    }
-
-    .history-reader-heading small {
-      margin:6px 0 12px;
-      color:#aab5aa;
-      font-size:10px;
-      line-height:1.5;
-    }
-
-    #aviatorHistoryImage {
-      display:block;
-      width:100%;
-      margin:10px 0;
-      color:#dce5dc;
-      font-size:11px;
-    }
-
-    #btnLerHistorico {
-      width:100%;
-      min-height:43px;
-      padding:10px;
-      border:1px solid rgba(214,179,75,.45);
-      border-radius:8px;
-      background:linear-gradient(135deg,#b8953e,#806323);
-      color:#fff;
-      font-size:11px;
-      font-weight:800;
-      cursor:pointer;
-    }
-
-    #btnLerHistorico:disabled {
-      opacity:.55;
-      cursor:wait;
-    }
-
-    #aviatorHistoryStatus,
-    #aviatorHistoryResults {
-      margin-top:10px;
-      color:#aab5aa;
-      font-size:10px;
-      line-height:1.6;
-      overflow-wrap:anywhere;
-    }
-
-    #aviatorHistoryResults {
-      padding:10px;
-      border-radius:8px;
-      background:rgba(0,0,0,.24);
-      color:#e5c65f;
-    }
-
-    @keyframes jnReveal {
-      from { opacity:0; transform:translateY(7px); }
-      to { opacity:1; transform:translateY(0); }
-    }
-
-    @media(max-width:360px) {
-      .feedback-buttons { grid-template-columns:1fr; }
-    }
+    .generated-combination,.image-analysis-area{margin-top:18px;padding:17px;border:1px solid rgba(214,179,75,.24);border-radius:12px;background:linear-gradient(145deg,rgba(18,28,20,.98),rgba(7,12,9,.98))}
+    .generated-combination[hidden],.aviator-target[hidden],.image-analysis-area [hidden]{display:none!important}
+    .combination-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+    .combination-kicker{color:#8d9990;font-size:9px;letter-spacing:1.8px}
+    .combination-heading h4{margin-top:5px;color:#f0f2ed;font-size:16px}
+    .combination-state{padding:6px 9px;border:1px solid rgba(53,217,130,.3);border-radius:30px;color:#35d982;font-size:8px;font-weight:700}
+    .ai-analysis{margin-top:12px;padding:14px;border:1px solid rgba(214,179,75,.2);border-radius:9px;background:rgba(0,0,0,.2);color:#e5eae5;font-size:13px;line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere}
+    .aviator-target{margin-top:12px;padding:20px 12px;border:1px solid rgba(214,179,75,.35);border-radius:12px;background:linear-gradient(145deg,#17251a,#090e0a);text-align:center}
+    .aviator-target span,.aviator-target small{display:block;color:#aab5aa;font-size:10px;letter-spacing:1px}
+    .aviator-target strong{display:block;margin:12px 0;color:#e5c65f;font-size:clamp(42px,12vw,62px);font-weight:900;line-height:1}
+    .aviator-attempt-note{margin-top:18px;color:#b8c4b9;font-size:12px;line-height:1.6}
+    .aviator-attempt-note strong{color:#e5c65f}
+    .combination-footnote{margin-top:12px;color:#9aa49b;font-size:10px;line-height:1.6}
+    .feedback-area{margin-top:17px;padding-top:14px;border-top:1px solid rgba(214,179,75,.17)}
+    .feedback-area>p:first-child,.image-analysis-area>p:first-child{margin-bottom:10px;color:#e5eae5;font-size:12px;font-weight:700}
+    .feedback-buttons{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+    .feedback-buttons button{min-height:42px;padding:9px 7px;border-radius:8px;font-size:10px;font-weight:800;cursor:pointer}
+    .feedback-success{border:1px solid rgba(53,217,130,.4);background:rgba(53,217,130,.1);color:#55e49a}
+    .feedback-failure{border:1px solid rgba(255,100,100,.35);background:rgba(255,100,100,.08);color:#ff9292}
+    .feedback-buttons button:disabled{opacity:.45;cursor:not-allowed}
+    .feedback-status,.image-help{margin-top:10px;color:#aab5aa;font-size:10px;line-height:1.5}
+    .image-analysis-area input{display:block;width:100%;margin:12px 0;color:#cbd5cc;font-size:12px}
+    .image-analysis-area .run-button{margin-top:4px}
+    @media(max-width:360px){.feedback-buttons{grid-template-columns:1fr}}
   `;
-
   document.head.appendChild(style);
 }
 
-console.log("JN 01 VIP: módulos e IA carregados.");
+console.log("JN 01 VIP: módulos, feedback e análise de imagens carregados.");
